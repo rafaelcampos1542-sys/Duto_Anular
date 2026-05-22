@@ -1,0 +1,61 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1; // Trabalharemos direto em metros
+
+vertices
+(
+    (-0.1 -0.06 -0.06) // 0 (X Y Z)
+    ( 9.1 -0.06 -0.06) // 1
+    ( 9.1  0.06 -0.06) // 2
+    (-0.1  0.06 -0.06) // 3
+    (-0.1 -0.06  0.06) // 4
+    ( 9.1 -0.06  0.06) // 5
+    ( 9.1  0.06  0.06) // 6
+    (-0.1  0.06  0.06) // 7
+);
+
+blocks
+(
+    // Aumentamos o número de células em X (de 60 para 200) para manter a qualidade
+    hex (0 1 2 3 4 5 6 7) (300 70 70) simpleGrading (1 1 1)
+);
+
+edges ();
+
+boundary
+(
+    // No snappyHexMesh, essas faces externas costumam ser descartadas,
+    // mas precisamos defini-las para o blockMesh rodar.
+    baseBox
+    {
+        type patch;
+        faces
+        (
+            (0 3 2 1)
+            (4 5 6 7)
+            (0 4 7 3)
+            (1 2 6 5)
+            (0 1 5 4)
+            (3 7 6 2)
+        );
+    }
+);
+
+mergePatchPairs ();
+
+
+// ************************************************************************* //

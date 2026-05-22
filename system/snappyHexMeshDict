@@ -1,0 +1,158 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+
+// ************************************************************************* //
+
+castellatedMesh true;
+snap            true;
+addLayers       false;   // 🔴 DESLIGADO (essencial pra estabilidade inicial)
+
+// ── Geometria ────────────────────────────────────────────────────────────
+geometry
+{
+    Colmanetti_95mm.stl
+    {
+        type triSurfaceMesh;
+        name tubo;
+        transform
+        {
+            origin   (0 0 0);
+            rotation (0 0 -90);
+            scale    0.001;
+        }
+    }
+};
+
+// ── Refinamento ──────────────────────────────────────────────────────────
+castellatedMeshControls
+{
+    maxLocalCells       2000000;
+    maxGlobalCells      3000000;   // 🔧 reduzido (evita explosão de células)
+    minRefinementCells  10;
+    nCellsBetweenLevels 2;
+
+    features
+    (
+        {
+            file  "Colmanetti_95mm.eMesh";
+            level 2;
+        }
+    );
+
+    resolveFeatureAngle 30;
+    allowFreeStandingZoneFaces true;
+
+    refinementSurfaces
+    {
+        tubo
+        {
+            level (2 2);   // 🔴 reduzido (era 2 3)
+        }
+    }
+
+    refinementRegions {}
+
+    // 🔴 ponto seguro dentro do fluido
+    locationInMesh (4.5 0 0.02);
+}
+
+// ── Snap (qualidade da superfície) ───────────────────────────────────────
+snapControls
+{
+    nSmoothPatch    7;
+    tolerance       1.2;
+    nSolveIter      150;
+    nRelaxIter      10;
+    nFeatureSnapIter 10;
+
+    implicitFeatureSnap  false;
+    explicitFeatureSnap  true;
+    multiRegionFeatureSnap false;
+}
+
+// ── Layers (DESATIVADO nessa fase) ───────────────────────────────────────
+addLayersControls
+{
+    relativeSizes       true;
+    expansionRatio      1.2;
+    finalLayerThickness 0.1;
+    minThickness        0.05;
+
+    nGrow               0;
+    featureAngle        130;
+
+    nRelaxIter          5;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals      3;
+    nSmoothThickness    10;
+
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedialAxisAngle  90;
+
+    nBufferCellsNoExtrude 0;
+    nLayerIter          50;
+
+    layers
+    {
+        tubo
+        {
+            nSurfaceLayers 2;
+        }
+    }
+}
+
+// ── Qualidade da malha ───────────────────────────────────────────────────
+meshQualityControls
+{
+    maxNonOrtho         65;   // 🔴 mais restritivo
+
+    maxBoundarySkewness 20;
+    maxInternalSkewness 4;
+
+    maxConcave          80;
+
+    minVol              1e-13;
+    minTetQuality       1e-15;
+
+    minArea             -1;
+    minTwist            0.02;
+    minDeterminant      0.001;
+
+    minFaceWeight       0.02;
+    minVolRatio         0.01;
+
+    minTriangleTwist    -1;
+
+    nSmoothScale        4;
+    errorReduction      0.1;
+
+    relaxed
+    {
+        maxNonOrtho 70;
+    }
+}
+
+// ── Output ───────────────────────────────────────────────────────────────
+writeFlags
+(
+    scalarLevels
+);
+
+// 🔧 tolerância padrão segura
+mergeTolerance 1e-6;
+
+// ************************************************************************* //

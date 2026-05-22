@@ -1,0 +1,38 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      setFieldsDict;
+}
+// ************************************************************************* //
+
+defaultFieldValues
+(
+    volScalarFieldValue alpha.water 0
+);
+
+regions
+(
+    cylinderToCell
+    {
+        p1 (-1 0 0);
+        p2 (10 0 0);
+        radius 0.045;
+        fieldValues
+        (
+            volScalarFieldValue alpha.water 0
+        );
+    }
+
+    boxToCell
+    {
+        box (0 -0.05 -0.05) (9.0 0.05 0);
+        fieldValues
+        (
+            volScalarFieldValue alpha.water 1
+        );
+    }
+);
+
+// ************************************************************************* //

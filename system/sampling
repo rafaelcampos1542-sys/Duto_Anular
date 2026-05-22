@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      sample;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+type            sets;
+libs            (sampling);
+
+writeControl    writeTime; // Grava quando o solver gravar os resultados
+interpolationScheme cellPoint;
+setFormat       csv;       // CSV é melhor para abrir no Excel ou Python/Matlab
+
+fields          ( alpha.water U );
+
+sets
+{
+    // Perfil vertical no meio do tubo (x = 4.5m)
+    perfil_vertical_meio
+    {
+        type    lineCell;
+        axis    z;
+        start   (4.5 0 -0.0475); // Fundo do duto
+        end     (4.5 0  0.0475); // Topo do duto
+        nPoints 200;
+    }
+
+    // Perfil vertical perto da saída (x = 8.5m)
+    perfil_vertical_saida
+    {
+        type    lineCell;
+        axis    z;
+        start   (8.5 0 -0.0475);
+        end     (8.5 0  0.0475);
+        nPoints 200;
+    }
+}
+
+// ************************************************************************* //

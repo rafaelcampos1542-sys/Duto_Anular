@@ -1,0 +1,90 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2312                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField; // Corrigido: Velocidade é vetor
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0]; // Corrigido: m/s
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet
+    {
+        type            codedFixedValue;
+        value           uniform (0 0 0);
+        name            velocityProfile;
+
+        code
+        #{
+            const fvPatch& p = this->patch();
+            const fvMesh& mesh = p.boundaryMesh().mesh();
+
+            vectorField v(p.size(), vector(0,0,0));
+
+            // parâmetros físicos
+            const scalar uAgua = 0.3;
+            const scalar uAr   = 0.8;
+
+            // tenta acessar alpha de forma segura
+            const volScalarField* alphaPtr =
+                mesh.findObject<volScalarField>("alpha.water");
+
+            if (!alphaPtr)
+            {
+                // 🔴 fallback: início da simulação ou falha de registro
+                forAll(v, faceI)
+                {
+                    v[faceI] = vector(0, uAgua, 0);
+                }
+            }
+            else
+            {
+                const scalarField alphaPatch =
+                    alphaPtr->boundaryField()[p.index()];
+
+                forAll(v, faceI)
+                {
+                    if (faceI < alphaPatch.size())
+                    {
+                        scalar w = pow(alphaPatch[faceI], 1.0); // padrão scalar w = alphaPatch[faceI];
+                        v[faceI] = vector(0, w*uAgua + (1.0 - w)*uAr, 0);
+                    }
+                    else
+                    {
+                        // 🔴 segurança extra (nunca deveria acontecer)
+                        v[faceI] = vector(0, uAgua, 0);
+                    }
+                }
+            }
+
+            operator==(v);
+        #};
+    }
+
+    outlet
+    {
+        type            zeroGradient;
+    }
+
+    tubo
+    {
+        type            noSlip; // Condição de parede para o duto
+    }
+
+    baseBox
+    {
+        type            noSlip; // Parede externa da simulação
+    }
+}

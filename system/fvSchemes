@@ -1,0 +1,97 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+// ************************************************************************* //
+
+ddtSchemes
+{
+    // Euler: 1ª ordem, estável, baixo custo — ideal para VoF com GPU
+    // Se precisar de 2ª ordem no tempo: trocar por CrankNicolson 0.9
+    default         Euler;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+
+    // Limitador de gradiente para U: evita oscilações em interfaces VoF
+    // cellLimited reduz transferências CPU↔GPU em regiões de alto gradiente
+    grad(U)         cellLimited Gauss linear 1;
+    grad(k)         cellLimited Gauss linear 1;
+    grad(omega)     cellLimited Gauss linear 1;
+}
+
+divSchemes
+{
+    // ── Momento ──────────────────────────────────────────────────────────
+    // linearUpwind com grad limitado: mais estável que o original
+    // O grad(U) agora usa cellLimited (definido acima)
+    div(rhoPhi,U)       Gauss linearUpwind grad(U);
+
+    // ── VoF / alpha (CPU - MULES) ─────────────────────────────────────
+    // Mantidos exatamente como estavam — corretos para interFoam
+    div(phi,alpha)      Gauss vanLeer;
+    div(phirb,alpha)    Gauss interfaceCompression 1;
+
+    // ── Tensão viscosa ────────────────────────────────────────────────
+    // linear é suficiente e mais barato que esquemas de alta ordem aqui
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+
+    // ── Turbulência ────────────────────────────────────────────────────
+    // limitedLinear 1: bom equilíbrio estabilidade/precisão para k-omega
+    div(phi,k)          Gauss limitedLinear 1;
+    div(phi,omega)      Gauss limitedLinear 1;
+}
+
+laplacianSchemes
+{
+    // ── Estratégia baseada na qualidade da sua malha ───────────────────
+    //
+    // SE malha ortogonal/boa qualidade (nonOrtho < 70°):
+    //   → usar "Gauss linear uncorrected"  (mais rápido, menos chamadas GPU)
+    //
+    // SE malha com não-ortogonalidade moderada (70°–85°):
+    //   → usar "Gauss linear limited corrected 0.333"  (seu valor era 0.5)
+    //
+    // SE malha complexa/snappyHexMesh (nonOrtho > 85°):
+    //   → manter "Gauss linear limited corrected 0.5" + nNonOrthCorr 1 ou 2
+    //
+    // Para GPU: MENOS correções = MENOS chamadas ao AmgX = MAIS rápido
+    // Recomendação inicial (ajuste conforme checkMesh):
+
+    default         Gauss linear limited corrected 0.333;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    // Deve ser CONSISTENTE com laplacianSchemes:
+    // uncorrected  → se laplacian for uncorrected
+    // limited 0.333 → se laplacian for limited corrected 0.333
+    // corrected    → se laplacian for corrected (mais pesado para GPU)
+
+    default         limited corrected 0.333;
+}
+
+wallDist
+{
+    // meshWave: eficiente, sem custo adicional na GPU
+    method          meshWave;
+}
+
+// ************************************************************************* //

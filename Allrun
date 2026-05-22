@@ -1,0 +1,76 @@
+#!/bin/sh
+cd "${0%/*}" || exit
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions
+
+# ── CONFIG ────────────────────────────────────────────────────────────────
+SOLVER="gamg"   # gamg | petsc_cpu | petsc_gpu
+
+# ── 1. Solver ─────────────────────────────────────────────────────────────
+case "$SOLVER" in
+    gamg)
+        NPROCS=8
+        echo "Usando GAMG (CPU)"
+        foamDictionary system/decomposeParDict \
+            -entry numberOfSubdomains -set $NPROCS
+        cp system/fvSolution.gamg.bak system/fvSolution
+        ;;
+    petsc_cpu)
+        NPROCS=8
+        echo "Usando PETSc CPU"
+        foamDictionary system/decomposeParDict \
+            -entry numberOfSubdomains -set $NPROCS
+        cp system/fvSolution.petsc_cpu.bak system/fvSolution
+        ;;
+    petsc_gpu)
+        NPROCS=4
+        echo "Usando PETSc + GPU"
+        foamDictionary system/decomposeParDict \
+            -entry numberOfSubdomains -set $NPROCS
+        cp system/fvSolution.amgx.bak system/fvSolution
+        export CUDA_VISIBLE_DEVICES=0
+        ;;
+esac
+
+# ── 2. Limpeza ────────────────────────────────────────────────────────────
+echo "Limpando caso..."
+rm -rf 0 processor* constant/polyMesh
+
+# ── 3. Restaurar condições iniciais ───────────────────────────────────────
+cp -r 0.orig 0
+
+# ── 4. Malha ──────────────────────────────────────────────────────────────
+runApplication blockMesh
+runApplication surfaceFeatureExtract
+runApplication snappyHexMesh -overwrite
+checkMesh | grep -E "cells:|skewness|non-ortho"
+
+# ── 5. Ajustes de patch ───────────────────────────────────────────────────
+echo "Corrigindo patches..."
+foamDictionary constant/polyMesh/boundary \
+    -entry entry0/baseBox/type -set wall > /dev/null
+
+runApplication topoSet
+runApplication createPatch -overwrite
+
+# ── 6. Limpeza de lixo do snappy ──────────────────────────────────────────
+rm -f 0/cellLevel 0/pointLevel 0/surfaceIndex 0/level0Edge 2>/dev/null
+
+# ── 7. Inicialização física (CRÍTICO) ─────────────────────────────────────
+echo "Aplicando setFields..."
+runApplication setFields
+
+# ── 8. Compilação do coded BC (serial!) ───────────────────────────────────
+echo "Pré-compilando dynamicCode..."
+interFoam -postProcess > /dev/null 2>&1
+
+# ── 9. Paralelização ──────────────────────────────────────────────────────
+runApplication decomposePar -force
+
+echo "Rodando com $NPROCS núcleos..."
+mpirun -np $NPROCS interFoam -parallel > log.interFoam 2>&1
+
+# ── 10. Pós ───────────────────────────────────────────────────────────────
+runApplication reconstructPar
+
+touch case.foam
+echo "Finalizado!"

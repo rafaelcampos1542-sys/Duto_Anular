@@ -1,0 +1,21 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      surfaceFeatureExtractDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// SUBSTITUA pelo nome exato do seu arquivo que está em constant/triSurface
+Colmanetti_95mm.stl 
+{
+    extractionMethod    extractFromSurface;
+    
+    extractFromSurfaceCoeffs
+    {
+        includedAngle   150; // Para capturar bem a curvatura do duto
+    }
+
+    writeObj            yes;
+}

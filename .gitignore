@@ -1,0 +1,36 @@
+# OpenFOAM results
+processor*/
+[1-9]*/
+0.0*/
+
+# Logs
+log*
+*.log
+
+# ParaView
+*.foam
+*.OpenFOAM
+case.foam
+
+# Mesh generated
+constant/polyMesh/
+
+# Post processing
+postProcessing/
+
+# Dynamic code
+dynamicCode/
+
+# Compiled libs
+*.so
+*.o
+
+# Temporary
+*.bak
+*.swp
+
+# VSCode
+.vscode/
+
+# Deb packages
+*.deb

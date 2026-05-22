@@ -1,0 +1,74 @@
+#!/bin/bash
+cd "$(dirname "$0")" || exit 1
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# ===============================
+# Função para rodar caso
+# ===============================
+runCase () {
+    NP=$1
+    LABEL=$2
+
+    echo "===================================="
+    echo "Rodando caso: $LABEL ($NP núcleos)"
+    echo "===================================="
+    rm -rf processor*
+    rm -rf 0
+    cp -r 0.orig 0
+    # Limpeza TOTAL
+    rm -f log.decomposePar
+
+    # Ajusta número de subdomínios
+    # Define número de subdomínios
+    foamDictionary system/decomposeParDict \
+        -entry numberOfSubdomains \
+        -set $NP
+
+    # Força decomposePar rodar
+    # Decomposição
+    decomposePar -force > log.decomposePar 2>&1
+
+    # Checagem
+    if [ ! -d "processor0" ]; then
+        echo "❌ ERRO: decomposePar falhou"
+        exit 1
+    fi
+
+    TS=$(date +%H%M%S)
+
+    # Execução
+    timeout 5m mpirun -np $NP --use-hwthread-cpus interFoam -parallel \
+        > log.interFoam.${LABEL}_${TS} 2>&1
+}
+
+# ===============================
+# CPU
+# ===============================
+cp system/fvSolution.gamg.bak system/fvSolution
+
+runCase 4 cpu4_gamg
+runCase 8 cpu8_gamg
+runCase 14 cpu14_gamg
+
+# ===============================
+# CPU_pestsc
+# ===============================
+cp system/fvSolution.petsc_cpu.bak system/fvSolution
+
+runCase 4 cpu4_pestsc
+runCase 8 cpu8_pestsc
+runCase 14 cpu14_pestsc
+
+# ===============================
+# GPU
+# ===============================
+cp system/fvSolution.amgx.bak system/fvSolution
+export CUDA_VISIBLE_DEVICES=0
+
+runCase 1 gpu1
+runCase 2 gpu2
+runCase 4 gpu4
+
+echo "===================================="
+echo "Benchmark finalizado!"
+echo "===================================="
