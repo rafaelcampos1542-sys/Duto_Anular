@@ -17,32 +17,32 @@ FoamFile
 type            sets;
 libs            (sampling);
 
-writeControl    writeTime; // Grava quando o solver gravar os resultados
+writeControl    writeTime;
 interpolationScheme cellPoint;
-setFormat       csv;       // CSV é melhor para abrir no Excel ou Python/Matlab
+setFormat       csv;
 
 fields          ( alpha.water U );
 
 sets
 {
-    // Perfil vertical no meio do tubo (x = 4.5m)
+    // Perfil vertical Z no meio do comprimento do tubo (y = 0 m)
     perfil_vertical_meio
     {
-        type    lineCell;
-        axis    z;
-        start   (4.5 0 -0.0475); // Fundo do duto
-        end     (4.5 0  0.0475); // Topo do duto
-        nPoints 200;
+        type        lineCell;
+        axis        z;
+        start       (0 0 -0.0575);
+        end         (0 0  0.0575);
+        nPoints     200;
     }
 
-    // Perfil vertical perto da saída (x = 8.5m)
+    // Perfil vertical Z na saída do tubo (y = 2.5 m)
     perfil_vertical_saida
     {
-        type    lineCell;
-        axis    z;
-        start   (8.5 0 -0.0475);
-        end     (8.5 0  0.0475);
-        nPoints 200;
+        type        lineCell;
+        axis        z;
+        start       (0 2.5 -0.0575);
+        end         (0 2.5  0.0575);
+        nPoints     200;
     }
 }
 

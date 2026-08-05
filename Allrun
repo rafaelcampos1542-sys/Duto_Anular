@@ -12,65 +12,61 @@ case "$SOLVER" in
         echo "Usando GAMG (CPU)"
         foamDictionary system/decomposeParDict \
             -entry numberOfSubdomains -set $NPROCS
-        cp system/fvSolution.gamg.bak system/fvSolution
+        cp system/fvSolution.gamg.bak system/fvSolution 2>/dev/null || true
         ;;
     petsc_cpu)
         NPROCS=8
         echo "Usando PETSc CPU"
         foamDictionary system/decomposeParDict \
             -entry numberOfSubdomains -set $NPROCS
-        cp system/fvSolution.petsc_cpu.bak system/fvSolution
+        cp system/fvSolution.petsc_cpu.bak system/fvSolution 2>/dev/null || true
         ;;
     petsc_gpu)
         NPROCS=4
         echo "Usando PETSc + GPU"
         foamDictionary system/decomposeParDict \
             -entry numberOfSubdomains -set $NPROCS
-        cp system/fvSolution.amgx.bak system/fvSolution
+        cp system/fvSolution.amgx.bak system/fvSolution 2>/dev/null || true
         export CUDA_VISIBLE_DEVICES=0
         ;;
 esac
 
 # ── 2. Limpeza ────────────────────────────────────────────────────────────
 echo "Limpando caso..."
-rm -rf 0 processor* constant/polyMesh
+rm -rf 0 processor* constant/polyMesh log.* dynamicCode 2>/dev/null
 
 # ── 3. Restaurar condições iniciais ───────────────────────────────────────
 cp -r 0.orig 0
 
-# ── 4. Malha ──────────────────────────────────────────────────────────────
+# ── 4. Geração de Malha ───────────────────────────────────────────────────
+echo "Gerando malha..."
 runApplication blockMesh
 runApplication surfaceFeatureExtract
 runApplication snappyHexMesh -overwrite
-checkMesh | grep -E "cells:|skewness|non-ortho"
+runApplication checkMesh
 
-# ── 5. Ajustes de patch ───────────────────────────────────────────────────
-echo "Corrigindo patches..."
-foamDictionary constant/polyMesh/boundary \
-    -entry entry0/baseBox/type -set wall > /dev/null
+# ── 5. Limpeza de arquivos temporários do snappy ─────────────────────────
+echo "Limpando arquivos temporários do snappyHexMesh..."
+rm -f 0/cellLevel 0/pointLevel 0/surfaceIndex 0/level0Edge 0/cc* 2>/dev/null
 
-runApplication topoSet
-runApplication createPatch -overwrite
-
-# ── 6. Limpeza de lixo do snappy ──────────────────────────────────────────
-rm -f 0/cellLevel 0/pointLevel 0/surfaceIndex 0/level0Edge 2>/dev/null
-
-# ── 7. Inicialização física (CRÍTICO) ─────────────────────────────────────
+# ── 6. Inicialização física ───────────────────────────────────────────────
 echo "Aplicando setFields..."
 runApplication setFields
 
-# ── 8. Compilação do coded BC (serial!) ───────────────────────────────────
-echo "Pré-compilando dynamicCode..."
-interFoam -postProcess > /dev/null 2>&1
+# ── 7. Pré-compilação do coded BC (serial) ────────────────────────────────
+echo "Pré-compilando dynamicCode/codedBC..."
+interIsoFoam -postProcess > /dev/null 2>&1 || true
 
-# ── 9. Paralelização ──────────────────────────────────────────────────────
+# ── 8. Paralelização e Execução ───────────────────────────────────────────
+echo "Decompondo domínio para $NPROCS núcleos..."
 runApplication decomposePar -force
 
-echo "Rodando com $NPROCS núcleos..."
-mpirun -np $NPROCS interFoam -parallel > log.interFoam 2>&1
+echo "Rodando interIsoFoam em paralelo com $NPROCS núcleos..."
+mpirun -np $NPROCS interIsoFoam -parallel > log.interIsoFoam 2>&1
 
-# ── 10. Pós ───────────────────────────────────────────────────────────────
+# ── 9. Pós-processamento ──────────────────────────────────────────────────
+echo "Reconstruindo o caso..."
 runApplication reconstructPar
 
 touch case.foam
-echo "Finalizado!"
+echo "Simulação e pós-processamento finalizados com sucesso!"

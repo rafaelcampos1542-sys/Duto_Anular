@@ -1,3 +1,10 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
@@ -7,15 +14,32 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// SUBSTITUA pelo nome exato do seu arquivo que está em constant/triSurface
-Colmanetti_95mm.stl 
+inlet.stl
 {
-    extractionMethod    extractFromSurface;
-    
-    extractFromSurfaceCoeffs
-    {
-        includedAngle   150; // Para capturar bem a curvatura do duto
-    }
-
-    writeObj            yes;
+    extractionMethod extractFromSurface;
+    extractFromSurfaceCoeffs { includedAngle 150; }
+    writeObj yes;
 }
+
+outlet.stl
+{
+    extractionMethod extractFromSurface;
+    extractFromSurfaceCoeffs { includedAngle 150; }
+    writeObj yes;
+}
+
+parede_interna.stl
+{
+    extractionMethod extractFromSurface;
+    extractFromSurfaceCoeffs { includedAngle 150; }
+    writeObj yes;
+}
+
+parede_externa.stl
+{
+    extractionMethod extractFromSurface;
+    extractFromSurfaceCoeffs { includedAngle 150; }
+    writeObj yes;
+}
+
+// ************************************************************************* //

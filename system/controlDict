@@ -14,7 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     interFoam;
+application     interIsoFoam;
 startFrom       startTime;
 startTime       0;
 //startFrom latestTime;

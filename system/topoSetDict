@@ -29,7 +29,9 @@ actions
         type    faceSet;
         action  subset;
         source  boxToFace;
-        box     (-0.11 -0.11 -0.11) (0.01 0.11 0.11); // Margem maior para garantir captura
+        // Inlet (na extremidade y = -2.5)
+        box (-0.06 -2.51 -0.06) (0.06 -2.49 0.06);
+
     }
 
     // Cria o outletFaces do zero
@@ -45,6 +47,7 @@ actions
         type    faceSet;
         action  subset;
         source  boxToFace;
-        box     (8.99 -0.11 -0.11) (9.11 0.11 0.11);
+        // Outlet (na extremidade y = +2.5)
+        box (-0.06 2.49 -0.06) (0.06 2.51 0.06); // Margem maior para garantir captura
     }
 );
