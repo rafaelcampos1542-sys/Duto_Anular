@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2312                                  |
+|  \\    /   O peration     | Version:  v2312                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -9,12 +9,18 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volVectorField; // Corrigido: Velocidade é vetor
+    class       volVectorField;
     object      U;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 1 -1 0 0 0 0]; // Corrigido: m/s
+// =============================================================================
+// CONDICAO DE ENTRADA — Perfil bifasico para raiz ESTAVEL de O&F (2023)
+// =============================================================================
+// Q = 12.00 L/min | h_L = 16.559 mm | V = 0.2172 m/s | Re = 14.0
+// =============================================================================
+
+dimensions      [0 1 -1 0 0 0 0];
 
 internalField   uniform (0 0 0);
 
@@ -33,20 +39,20 @@ boundaryField
 
             vectorField v(p.size(), vector(0,0,0));
 
-            // parâmetros físicos
-            const scalar uAgua = 0.3;
-            const scalar uAr   = 0.8;
+            // Velocidades das fases (ajustadas para a raiz analitica)
+            const scalar uOleo = 0.2172;   // [m/s] velocidade da fase oleo
+            const scalar uAr   = 0.01;              // [m/s] velocidade minima do ar (evita estagnacao)
 
-            // tenta acessar alpha de forma segura
+            // Procurar alpha.oil (nao alpha.water!)
             const volScalarField* alphaPtr =
-                mesh.findObject<volScalarField>("alpha.water");
+                mesh.findObject<volScalarField>("alpha.oil");
 
             if (!alphaPtr)
             {
-                // 🔴 fallback: início da simulação ou falha de registro
+                // Fallback: se alpha.oil nao existe, assume so oleo
                 forAll(v, faceI)
                 {
-                    v[faceI] = vector(0, uAgua, 0);
+                    v[faceI] = vector(0, uOleo, 0);
                 }
             }
             else
@@ -58,13 +64,12 @@ boundaryField
                 {
                     if (faceI < alphaPatch.size())
                     {
-                        scalar w = pow(alphaPatch[faceI], 1.0); // padrão scalar w = alphaPatch[faceI];
-                        v[faceI] = vector(0, w*uAgua + (1.0 - w)*uAr, 0);
+                        scalar w = alphaPatch[faceI];  // peso da fase oleo
+                        v[faceI] = vector(0, w*uOleo + (1.0 - w)*uAr, 0);
                     }
                     else
                     {
-                        // 🔴 segurança extra (nunca deveria acontecer)
-                        v[faceI] = vector(0, uAgua, 0);
+                        v[faceI] = vector(0, uOleo, 0);
                     }
                 }
             }
@@ -78,13 +83,15 @@ boundaryField
         type            zeroGradient;
     }
 
-    tubo
+    parede_interna
     {
-        type            noSlip; // Condição de parede para o duto
+        type            noSlip;
     }
 
-    baseBox
+    parede_externa
     {
-        type            noSlip; // Parede externa da simulação
+        type            noSlip;
     }
 }
+
+// ************************************************************************* //

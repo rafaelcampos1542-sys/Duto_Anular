@@ -15,7 +15,7 @@ FoamFile
 // ************************************************************************* //
 solvers
 {
-    "alpha.water.*"
+    "alpha.oil.*"
     {
         nAlphaCorr      2;
         nAlphaSubCycles 2;

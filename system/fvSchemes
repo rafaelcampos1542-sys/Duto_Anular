@@ -41,8 +41,8 @@ divSchemes
 
     // ── VoF / alpha (CPU - MULES) ─────────────────────────────────────
     // Mantidos exatamente como estavam — corretos para interFoam
-    div(phi,alpha)      Gauss vanLeer;
-    div(phirb,alpha)    Gauss interfaceCompression 1;
+    div(phi,alpha.oil)      Gauss vanLeer;
+    div(phirb,alpha.oil)    Gauss interfaceCompression 1;
 
     // ── Tensão viscosa ────────────────────────────────────────────────
     // linear é suficiente e mais barato que esquemas de alta ordem aqui

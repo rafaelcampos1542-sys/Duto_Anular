@@ -1,7 +1,6 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2312                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -21,27 +20,43 @@ writeControl    writeTime;
 interpolationScheme cellPoint;
 setFormat       csv;
 
-fields          ( alpha.water U );
+fields          ( alpha.oil U );
 
 sets
 {
-    // Perfil vertical Z no meio do comprimento do tubo (y = 0 m)
-    perfil_vertical_meio
+    // ================================================================
+    // Direção de amostragem: ao longo de -g (perpendicular à interface)
+    // g = (0, 2.539, -9.481)  →  direção = (0, -0.254, 0.968)
+    // Comprimento da linha = do (0.115 m)
+    // ================================================================
+    
+    // --- Meio do duto (y = 0) ---------------------------------------
+    perfil_meio
+    {
+        type        lineCell;
+        axis        distance;   // exporta coordenada ao longo da linha
+        start       (0.0  0.0        -0.0575);
+        end         (0.0  0.02924     0.0575);  // deslocamento em Y e Z
+        nPoints     200;
+    }
+
+    // --- Saída do duto (y = 2.5) ------------------------------------
+    perfil_saida
+    {
+        type        lineCell;
+        axis        distance;
+        start       (0.0  0.5        -0.0575);
+        end         (0.0  0.52924     0.0575);
+        nPoints     200;
+    }
+
+    // --- Linha vertical pura em Z (para comparação/debug) -----------
+    perfil_vertical_debug
     {
         type        lineCell;
         axis        z;
         start       (0 0 -0.0575);
         end         (0 0  0.0575);
-        nPoints     200;
-    }
-
-    // Perfil vertical Z na saída do tubo (y = 2.5 m)
-    perfil_vertical_saida
-    {
-        type        lineCell;
-        axis        z;
-        start       (0 2.5 -0.0575);
-        end         (0 2.5  0.0575);
         nPoints     200;
     }
 }

@@ -13,66 +13,90 @@ FoamFile
     object      fvSolution;
 }
 // ************************************************************************* //
-
 solvers
 {
-    "alpha.water.*"
+    "alpha.oil.*"
     {
         nAlphaCorr      2;
-        nAlphaSubCycles 2;    // ← era 1, aumentar ajuda a estabilizar
+        nAlphaSubCycles 2;
         cAlpha          1;
-        icAlpha         0;    // ← clipping explícito 0-1
         MULESCorr       yes;
-        nLimiterIter    8;    // ← era 5, mais iterações no limitador
+        nLimiterIter    8;
         solver          smoothSolver;
         smoother        symGaussSeidel;
         tolerance       1e-8;
         relTol          0;
     }
-
     "pcorr.*"
     {
-        solver          GAMG;
-        smoother        DICGaussSeidel;
+        solver          petsc;
+        preconditioner  petsc;
         tolerance       1e-5;
         relTol          0;
-        nCellsInCoarsestLevel 20;
+        petsc
+        {
+            options { ksp_type cg; pc_type gamg; }
+            caching
+            {
+                matrix { updateFrequency adaptive; }
+                preconditioner { updateFrequency adaptive; }
+            }
+        }
     }
-
     p_rgh
     {
-        solver          GAMG;
-        smoother        DICGaussSeidel;
+        solver          petsc;
+        preconditioner  petsc;
         tolerance       1e-7;
         relTol          0.05;
-        nCellsInCoarsestLevel 20;
+        petsc
+        {
+            options { ksp_type cg; pc_type gamg; }
+            caching
+            {
+                matrix { updateFrequency adaptive; }
+                preconditioner { updateFrequency adaptive; }
+            }
+        }
     }
-
     p_rghFinal
     {
         $p_rgh;
-        relTol          0;
+        relTol  0;
     }
-
     U
     {
-        solver          smoothSolver;
-        smoother        symGaussSeidel;
+        solver          petsc;
+        preconditioner  petsc;
         tolerance       1e-6;
         relTol          0;
-        nSweeps         1;
+        petsc
+        {
+            options { ksp_type bicg; pc_type bjacobi; }
+            caching
+            {
+                matrix { updateFrequency adaptive; }
+                preconditioner { updateFrequency adaptive; }
+            }
+        }
     }
-
     "(k|omega).*"
     {
-        solver          smoothSolver;
-        smoother        symGaussSeidel;
+        solver          petsc;
+        preconditioner  petsc;
         tolerance       1e-8;
         relTol          0.1;
-        nSweeps         1;
+        petsc
+        {
+            options { ksp_type bicg; pc_type bjacobi; }
+            caching
+            {
+                matrix { updateFrequency adaptive; }
+                preconditioner { updateFrequency adaptive; }
+            }
+        }
     }
 }
-
 PIMPLE
 {
     momentumPredictor       no;
@@ -82,10 +106,8 @@ PIMPLE
     pRefCell                0;
     pRefValue               0;
 }
-
 relaxationFactors
 {
     equations { ".*" 1; }
 }
-
-// ************************************************************************* //
+// *************************************************************************

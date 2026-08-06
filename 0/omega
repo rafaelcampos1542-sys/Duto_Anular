@@ -26,12 +26,12 @@ boundaryField
     {
         type            zeroGradient;
     }
-    tubo
+    parede_interna
     {
-        type            omegaWallFunction; // Wall function específica
+        type            omegaWallFunction;
         value           uniform 1.8;
     }
-    baseBox
+    parede_externa
     {
         type            omegaWallFunction;
         value           uniform 1.8;

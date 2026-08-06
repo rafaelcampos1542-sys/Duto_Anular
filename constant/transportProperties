@@ -14,23 +14,26 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-phases          (water air);
+phases          (oil air);
 
-water
+oil
 {
     transportModel  Newtonian;
-    nu              8.8e-07;
-    rho             1000;
+    // Dados da Tabela 1 (Ortiz-Vidal & Fiorot, 2023):
+    // mu = 0.576 Pa.s, rho ≈ 900 kg/m³  →  nu = 6.4e-04 m²/s
+    nu              6.4e-04;
+    rho             900;
 }
 
 air
 {
     transportModel  Newtonian;
     nu              1.48e-05;
-    rho             1;
+    rho             1.2;   // ligeiramente mais realista que 1
 }
 
-sigma            0.07;
-
+// Tensão superficial óleo-ar (~0.03 N/m)
+// Ajuste se tiver dado experimental específico
+sigma            0.03;
 
 // ************************************************************************* //

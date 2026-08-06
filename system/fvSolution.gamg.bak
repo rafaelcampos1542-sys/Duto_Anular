@@ -16,7 +16,7 @@ FoamFile
 
 solvers
 {
-    "alpha.water.*"
+    "alpha.oil.*"
     {
         nAlphaCorr      2;
         nAlphaSubCycles 2;    // ← era 1, aumentar ajuda a estabilizar

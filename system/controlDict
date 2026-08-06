@@ -19,7 +19,7 @@ startFrom       startTime;
 startTime       0;
 //startFrom latestTime;
 stopAt          endTime;
-endTime         30;
+endTime         10;
 deltaT          1e-04;
 
 writeControl    runTime;

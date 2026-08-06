@@ -15,8 +15,8 @@ cp -r 0.orig 0
 
 # Execução das ferramentas de malha
 runApplication blockMesh
-runApplication surfaceFeatureExtract
-runApplication snappyHexMesh -overwrite
+#runApplication surfaceFeatureExtract
+#runApplication snappyHexMesh -overwrite
 runApplication checkMesh
 
 # ==============================================================================
@@ -40,7 +40,7 @@ runCase () {
     setFields > log.setFields.${LABEL} 2>&1
 
     # Limpa resíduos temporários do snappy dentro do diretório 0
-    rm -f 0/cellLevel 0/pointLevel 0/surfaceIndex 0/level0Edge 0/cc* 2>/dev/null
+    #rm -f 0/cellLevel 0/pointLevel 0/surfaceIndex 0/level0Edge 0/cc* 2>/dev/null
 
     # Pré-compilação do codedBC em serial
     interIsoFoam -postProcess > /dev/null 2>&1 || true
@@ -62,7 +62,7 @@ runCase () {
     TS=$(date +%H%M%S)
 
     # Execução do solver com limite de tempo (timeout de 5 minutos)
-    timeout 5m mpirun -np $NP --use-hwthread-cpus interIsoFoam -parallel \
+    timeout 5m mpirun --oversubscribe -np $NP --use-hwthread-cpus interIsoFoam -parallel \
         > log.interIsoFoam.${LABEL}_${TS} 2>&1
 
     echo "✓ Teste $LABEL concluído."

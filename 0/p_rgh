@@ -28,22 +28,20 @@ boundaryField
 
     outlet
     {
-        // Pressão atmosférica na saída
-        type            totalPressure;
-        p0              uniform 0;
+        // fixedValue é mais estável que totalPressure para escoamento
+        // de superfície livre com possível refluxo leve
+        type            fixedValue;
         value           uniform 0;
     }
 
-    tubo
+    parede_interna
     {
-        // Parede do duto
         type            fixedFluxPressure;
         value           uniform 0;
     }
 
-    baseBox
+    parede_externa
     {
-        // Paredes externas da caixa
         type            fixedFluxPressure;
         value           uniform 0;
     }

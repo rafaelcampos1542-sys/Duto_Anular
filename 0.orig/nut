@@ -27,12 +27,12 @@ boundaryField
         type            calculated;
         value           uniform 0;
     }
-    tubo
+    parede_interna
     {
         type            nutkWallFunction;
         value           uniform 0;
     }
-    baseBox
+    parede_externa
     {
         type            nutkWallFunction;
         value           uniform 0;

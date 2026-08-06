@@ -14,20 +14,30 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+// =============================================================================
+// INICIALIZACAO DIRETA — Raiz ESTAVEL do modelo de Ortiz-Vidal & Fiorot (2023)
+// =============================================================================
+// Parametros:
+//   Q = 12.00 L/min = 0.000200 m^3/s
+//   h_L = 16.559 mm (Regiao 1, ESTAVEL)
+//   V = 0.2172 m/s
+//   Re = 14.0 (Laminar)
+//   zMax = -0.040941 m (medido a partir do fundo do duto externo)
+// =============================================================================
+
 defaultFieldValues
 (
-    volScalarFieldValue alpha.water 0 // Padrão: Ar
+    volScalarFieldValue alpha.oil 0
 );
 
 regions
 (
-    // Preenche a metade inferior do tubo com Água (z de -0.06 até 0)
     boxToCell
     {
-        box (-0.06 -2.501 -0.06) (0.06 2.501 0);
+        box (-0.06 -0.501 -0.06) (0.06 0.501 -0.040941);
         fieldValues
         (
-            volScalarFieldValue alpha.water 1
+            volScalarFieldValue alpha.oil 1
         );
     }
 );

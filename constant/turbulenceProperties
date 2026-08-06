@@ -14,14 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-simulationType  RAS;
-
-RAS
-{
-    RASModel        kOmegaSST; // Ótimo para prever a separação e o filme na parede
-    turbulence      on;
-    printCoeffs     on;
-}
-
+// Re = 14.0 (laminar) — raiz da Regiao 1, Q = 12 L/min
+simulationType  laminar;
 
 // ************************************************************************* //

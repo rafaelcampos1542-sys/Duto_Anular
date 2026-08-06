@@ -26,12 +26,12 @@ boundaryField
     {
         type            zeroGradient;
     }
-    tubo
+    parede_interna
     {
-        type            kqRWallFunction; // Wall function para parede do duto
+        type            kqRWallFunction;
         value           uniform 0.00015;
     }
-    baseBox
+    parede_externa
     {
         type            kqRWallFunction;
         value           uniform 0.00015;
