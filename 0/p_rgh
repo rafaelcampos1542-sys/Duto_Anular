@@ -22,27 +22,25 @@ boundaryField
 {
     inlet
     {
-        type            fixedFluxPressure;
-        value           uniform 0;
+        type fixedFluxPressure;
+        value uniform 0;
     }
 
     outlet
     {
-        // fixedValue é mais estável que totalPressure para escoamento
-        // de superfície livre com possível refluxo leve
-        type            fixedValue;
-        value           uniform 0;
+        type fixedValue;
+        value uniform 0;
     }
 
     parede_interna
     {
-        type            fixedFluxPressure;
-        value           uniform 0;
+        type fixedFluxPressure;
+        value uniform 0;
     }
 
     parede_externa
     {
-        type            fixedFluxPressure;
-        value           uniform 0;
+        type fixedFluxPressure;
+        value uniform 0;
     }
 }

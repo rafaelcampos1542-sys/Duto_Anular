@@ -12,18 +12,10 @@ FoamFile
     class       dictionary;
     object      setFieldsDict;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// ************************************************************************* //
 
-// =============================================================================
-// INICIALIZACAO DIRETA — Raiz ESTAVEL do modelo de Ortiz-Vidal & Fiorot (2023)
-// =============================================================================
-// Parametros:
-//   Q = 12.00 L/min = 0.000200 m^3/s
-//   h_L = 16.559 mm (Regiao 1, ESTAVEL)
-//   V = 0.2172 m/s
-//   Re = 14.0 (Laminar)
-//   zMax = -0.040941 m (medido a partir do fundo do duto externo)
-// =============================================================================
+// Gerado automaticamente por modelo_anular.py
+// Q = 35.00 L/min | h_L = 53.904 mm | V = 0.2054 m/s
 
 defaultFieldValues
 (
@@ -34,12 +26,10 @@ regions
 (
     boxToCell
     {
-        box (-0.06 -0.501 -0.06) (0.06 0.501 -0.040941);
+        box (-0.06 -1.501 -0.06) (0.06 1.501 -0.003596);
         fieldValues
         (
             volScalarFieldValue alpha.oil 1
         );
     }
 );
-
-// ************************************************************************* //

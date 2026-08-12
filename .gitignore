@@ -1,11 +1,17 @@
 # OpenFOAM results
+__pycache__
 processor*/
 [1-9]*/
 0.0*/
+0.[0-9]*/
 
+
+venv
 # Logs
 log*
 *.log
+estrutura_.json
+leitor_pasta.py
 
 # ParaView
 *.foam
@@ -17,6 +23,7 @@ constant/polyMesh/
 
 # Post processing
 postProcessing/
+postProcessing/sampling/
 
 # Dynamic code
 dynamicCode/
@@ -31,6 +38,9 @@ dynamicCode/
 
 # VSCode
 .vscode/
-
+meu_env/
+venv/
+dynamicCode/
+backup_*
 # Deb packages
 *.deb

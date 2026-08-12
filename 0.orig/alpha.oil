@@ -12,17 +12,11 @@ FoamFile
     class       volScalarField;
     object      alpha.oil;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// ************************************************************************* //
 
-// =============================================================================
-// FRACAO VOLUMETRICA DO OLEO — Perfil de entrada para raiz ESTAVEL
-// =============================================================================
-// Q = 12.00 L/min | h_L = 16.559 mm | V = 0.2172 m/s
-// Comprimento do duto: 1.0 m
-// =============================================================================
+// Q = 35.00 L/min | h_L = 53.904 mm
 
 dimensions      [0 0 0 0 0 0 0];
-
 internalField   uniform 0;
 
 boundaryField
@@ -34,11 +28,10 @@ boundaryField
         name            alphaOilInletProfile;
 
         code
-        #{
-            // Interface na entrada: oleo abaixo, ar acima
-            const scalar hL_target = 0.016559;   // [m]
-            const scalar rOut      = 0.057500;           // [m]
-            const scalar zIface    = -rOut + hL_target;    // = -0.040941 m
+        #{ 
+            const scalar hL_target = 0.053904;
+            const scalar rOut      = 0.057500;
+            const scalar zIface    = -0.003596;
 
             const fvPatch& p = this->patch();
             scalarField alpha(p.size(), 0.0);
@@ -55,7 +48,9 @@ boundaryField
 
     outlet
     {
-        type            zeroGradient;
+        type            inletOutlet;
+        inletValue      uniform 0;
+        value           uniform 0;
     }
 
     parede_interna
@@ -68,5 +63,3 @@ boundaryField
         type            zeroGradient;
     }
 }
-
-// ************************************************************************* //

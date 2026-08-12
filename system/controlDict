@@ -1,46 +1,167 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2312                                 |
+|  \\    /   O peration     | Version:  2312                                  |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 FoamFile
 {
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      controlDict;
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          controlDict;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 application     interIsoFoam;
+
 startFrom       startTime;
+
 startTime       0;
-//startFrom latestTime;
+
 stopAt          endTime;
-endTime         10;
-deltaT          1e-04;
+
+endTime         20;
+
+deltaT          0.0001;
 
 writeControl    runTime;
-writeInterval   0.5;
+
+writeInterval   0.2;
 
 purgeWrite      0;
+
 writeFormat     ascii;
+
 writePrecision  6;
+
 writeCompression off;
+
 timeFormat      general;
+
 timePrecision   6;
 
 adjustTimeStep  yes;
+
 maxCo           0.5;
+
 maxAlphaCo      0.5;
-maxDeltaT       1e-3; // Evita saltos temporais excessivos
 
+maxDeltaT       0.001;
 
-libs
-(
-    petscFoam
-);
+libs            ( );
+
+functions
+{
+    sampling
+    {
+        type            sets;
+        libs            ( sampling );
+        writeControl    writeTime;
+        interpolationScheme cellPoint;
+        setFormat       csv;
+        fields          ( alpha.oil U );
+        sets
+        {
+            perfil_meio
+            {
+                type            uniform;
+                axis            z;
+                start           ( 0 0 -0.0575 );
+                end             ( 0 0 0.0575 );
+                nPoints         100;
+            }
+            perfil_saida
+            {
+                type            uniform;
+                axis            z;
+                start           ( 0 1.5 -0.0575 );
+                end             ( 0 1.5 0.0575 );
+                nPoints         100;
+            }
+            perfil_vertical_debug
+            {
+                type            polyLine;
+                axis            z;
+                points          ( ( 0 0 -0.0575 ) ( 0 0 0.0575 ) );
+                nPoints         200;
+            }
+        }
+    }
+    areaOleoMeio
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( alpha.oil );
+        operation       areaIntegrate;
+        regionType      sampledSurface;
+        name            planoOleoMeio;
+        sampledSurfaceDict
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point           ( 0 0 0 );
+                normal          ( 0 1 0 );
+            }
+            interpolate     true;
+        }
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    QOleoInlet
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( phi );
+        operation       weightedSum;
+        weightField     alpha.oil;
+        regionType      patch;
+        name            inlet;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    QOleoOutlet
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( phi );
+        operation       weightedSum;
+        weightField     alpha.oil;
+        regionType      patch;
+        name            outlet;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    areaOleoSaida
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( alpha.oil );
+        operation       areaIntegrate;
+        regionType      sampledSurface;
+        name            planoOleoSaida;
+        sampledSurfaceDict
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point           ( 0 1.5 0 );
+                normal          ( 0 1 0 );
+            }
+            interpolate     true;
+        }
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+}
+
 
 // ************************************************************************* //

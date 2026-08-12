@@ -43,8 +43,8 @@ solvers
     {
         solver          GAMG;
         smoother        DICGaussSeidel;
-        tolerance       1e-7;
-        relTol          0.05;
+        tolerance       1e-8;
+        relTol          0;
         nCellsInCoarsestLevel 20;
     }
 
@@ -63,6 +63,12 @@ solvers
         nSweeps         1;
     }
 
+    UFinal
+    {
+        $U;
+        relTol          0;
+    }
+
     "(k|omega).*"
     {
         solver          smoothSolver;
@@ -75,10 +81,10 @@ solvers
 
 PIMPLE
 {
-    momentumPredictor       no;
-    nOuterCorrectors        1;
+    momentumPredictor       yes;
+    nOuterCorrectors        2;
     nCorrectors             3;
-    nNonOrthogonalCorrectors 1;
+    nNonOrthogonalCorrectors 0;
     pRefCell                0;
     pRefValue               0;
 }

@@ -1,0 +1,27 @@
+name areaOleoSaida;
+type                surfaceFieldValue;
+libs                (fieldFunctionObjects);
+
+fields              (alpha.oil);
+
+operation            areaIntegrate;
+
+regionType           sampledSurface;
+
+sampledSurfaceDict
+{
+    type                cuttingPlane;
+
+    planeType           pointAndNormal;
+
+    pointAndNormalDict
+    {
+        point       (0 1.5 0);
+        normal      (0 1 0);
+    }
+
+    interpolate         true;
+}
+
+writeControl        writeTime;
+writeFields         false;

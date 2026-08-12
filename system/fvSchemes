@@ -40,7 +40,7 @@ divSchemes
     div(rhoPhi,U)       Gauss linearUpwind grad(U);
 
     // ── VoF / alpha (CPU - MULES) ─────────────────────────────────────
-    // Mantidos exatamente como estavam — corretos para interFoam
+    // Mantidos exatamente como estavam — corretos para interIsoFoam
     div(phi,alpha.oil)      Gauss vanLeer;
     div(phirb,alpha.oil)    Gauss interfaceCompression 1;
 

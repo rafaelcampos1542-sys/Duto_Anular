@@ -12,9 +12,8 @@ FoamFile
     class       dictionary;
     object      turbulenceProperties;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// ************************************************************************* //
 
-// Re = 14.0 (laminar) — raiz da Regiao 1, Q = 12 L/min
+// Re = 12.84 -> modelo: laminar
 simulationType  laminar;
 
-// ************************************************************************* //

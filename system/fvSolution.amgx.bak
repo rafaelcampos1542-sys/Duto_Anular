@@ -86,6 +86,13 @@ solvers
         }
     }
 
+    UFinal
+    {
+        $U;
+        relTol          0;
+    }
+
+
     "(k|omega).*"
     {
         solver          petsc;
@@ -106,10 +113,10 @@ solvers
 
 PIMPLE
 {
-    momentumPredictor       no;
-    nOuterCorrectors        1;
+    momentumPredictor       yes;
+    nOuterCorrectors        2;
     nCorrectors             3;
-    nNonOrthogonalCorrectors 1;
+    nNonOrthogonalCorrectors 0;
     pRefCell                0;
     pRefValue               0;
 }

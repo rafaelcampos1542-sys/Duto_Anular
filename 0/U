@@ -12,16 +12,11 @@ FoamFile
     class       volVectorField;
     object      U;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// ************************************************************************* //
 
-// =============================================================================
-// CONDICAO DE ENTRADA — Perfil bifasico para raiz ESTAVEL de O&F (2023)
-// =============================================================================
-// Q = 12.00 L/min | h_L = 16.559 mm | V = 0.2172 m/s | Re = 14.0
-// =============================================================================
+// Q = 35.00 L/min | h_L = 53.904 mm | V = 0.2054 m/s
 
 dimensions      [0 1 -1 0 0 0 0];
-
 internalField   uniform (0 0 0);
 
 boundaryField
@@ -36,24 +31,18 @@ boundaryField
         #{
             const fvPatch& p = this->patch();
             const fvMesh& mesh = p.boundaryMesh().mesh();
-
             vectorField v(p.size(), vector(0,0,0));
 
-            // Velocidades das fases (ajustadas para a raiz analitica)
-            const scalar uOleo = 0.2172;   // [m/s] velocidade da fase oleo
-            const scalar uAr   = 0.01;              // [m/s] velocidade minima do ar (evita estagnacao)
+            const scalar uOleo = 0.2054;
+            const scalar uAr   = 0.01;
 
-            // Procurar alpha.oil (nao alpha.water!)
             const volScalarField* alphaPtr =
                 mesh.findObject<volScalarField>("alpha.oil");
 
             if (!alphaPtr)
             {
-                // Fallback: se alpha.oil nao existe, assume so oleo
                 forAll(v, faceI)
-                {
                     v[faceI] = vector(0, uOleo, 0);
-                }
             }
             else
             {
@@ -64,7 +53,7 @@ boundaryField
                 {
                     if (faceI < alphaPatch.size())
                     {
-                        scalar w = alphaPatch[faceI];  // peso da fase oleo
+                        scalar w = alphaPatch[faceI];
                         v[faceI] = vector(0, w*uOleo + (1.0 - w)*uAr, 0);
                     }
                     else
@@ -80,7 +69,8 @@ boundaryField
 
     outlet
     {
-        type            zeroGradient;
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
     }
 
     parede_interna
@@ -93,5 +83,3 @@ boundaryField
         type            noSlip;
     }
 }
-
-// ************************************************************************* //
