@@ -14,63 +14,17 @@ FoamFile
 }
 // ************************************************************************* //
 
-// Q = 35.00 L/min | h_L = 53.904 mm | V = 0.2054 m/s
+// Q = 20.00 L/min | h_L = 19.345 mm | V = 0.2891 m/s
 
 dimensions      [0 1 -1 0 0 0 0];
 internalField   uniform (0 0 0);
 
 boundaryField
 {
-    inlet
-    {
-        type            codedFixedValue;
-        value           uniform (0 0 0);
-        name            velocityProfile;
-
-        code
-        #{
-            const fvPatch& p = this->patch();
-            const fvMesh& mesh = p.boundaryMesh().mesh();
-            vectorField v(p.size(), vector(0,0,0));
-
-            const scalar uOleo = 0.2054;
-            const scalar uAr   = 0.01;
-
-            const volScalarField* alphaPtr =
-                mesh.findObject<volScalarField>("alpha.oil");
-
-            if (!alphaPtr)
-            {
-                forAll(v, faceI)
-                    v[faceI] = vector(0, uOleo, 0);
-            }
-            else
-            {
-                const scalarField alphaPatch =
-                    alphaPtr->boundaryField()[p.index()];
-
-                forAll(v, faceI)
-                {
-                    if (faceI < alphaPatch.size())
-                    {
-                        scalar w = alphaPatch[faceI];
-                        v[faceI] = vector(0, w*uOleo + (1.0 - w)*uAr, 0);
-                    }
-                    else
-                    {
-                        v[faceI] = vector(0, uOleo, 0);
-                    }
-                }
-            }
-
-            operator==(v);
-        #};
-    }
-
     outlet
     {
         type            pressureInletOutletVelocity;
-        value           uniform (0 0 0);
+        value           $internalField;
     }
 
     parede_interna
@@ -82,4 +36,15 @@ boundaryField
     {
         type            noSlip;
     }
+    inlet_oil
+    {
+        type            fixedValue;
+        value           uniform (0 0.2891 0);
+    }
+    inlet_air
+    {
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
+    }
+
 }

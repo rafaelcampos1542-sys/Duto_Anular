@@ -20,27 +20,35 @@ internalField   uniform 0;
 
 boundaryField
 {
-    inlet
-    {
-        type fixedFluxPressure;
-        value uniform 0;
-    }
-
     outlet
     {
-        type fixedValue;
-        value uniform 0;
+        type            prghPressure;
+        p               uniform 0;
+        value           $internalField;
     }
 
     parede_interna
     {
-        type fixedFluxPressure;
-        value uniform 0;
+        type            fixedFluxPressure;
+        value           uniform 0;
     }
 
     parede_externa
     {
-        type fixedFluxPressure;
-        value uniform 0;
+        type            fixedFluxPressure;
+        value           uniform 0;
+    }
+
+    inlet_oil
+    {
+        type            fixedFluxPressure;
+        value           uniform 0;
+    }
+
+    inlet_air
+    {
+        type            totalPressure;
+        p0              uniform 0;
+        value           uniform 0;
     }
 }

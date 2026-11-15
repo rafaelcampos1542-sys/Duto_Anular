@@ -17,23 +17,25 @@ internalField   uniform 0.00015; // Valor inicial baixo
 
 boundaryField
 {
-    inlet
-    {
-        type            fixedValue;
-        value           uniform 0.00015;
-    }
+
     outlet
     {
         type            zeroGradient;
     }
     parede_interna
     {
-        type            kqRWallFunction;
-        value           uniform 0.00015;
+        type            zeroGradient;
     }
     parede_externa
     {
-        type            kqRWallFunction;
-        value           uniform 0.00015;
+        type            zeroGradient;
+    }
+    inlet_oil
+    {
+        type            zeroGradient;
+    }
+    inlet_air
+    {
+        type            zeroGradient;
     }
 }

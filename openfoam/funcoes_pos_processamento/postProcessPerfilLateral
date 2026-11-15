@@ -1,0 +1,35 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      postProcessPerfilLateral;
+}
+
+functions
+{
+    perfil_lateral
+    {
+        type                sets;
+        libs                (sampling);
+
+        writeControl        writeTime;
+        interpolationScheme cellPoint;
+        setFormat           csv;
+
+        fields              (alpha.oil U);
+
+        sets
+        {
+            perfil_lateral_esquerdo
+            {
+                type        uniform;
+                axis        z;
+                start       (-0.0475 0 -0.0575);
+                end         (-0.0475 0  0.0575);
+                nPoints     200;
+            }
+        }
+    }
+}

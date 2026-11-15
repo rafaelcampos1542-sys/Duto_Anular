@@ -1,0 +1,16 @@
+caso_id,grupo,malha,vazao,Q_nominal_L_min,raiz,pasta,n_celulas,volume_dominio_m3,n_tempos,t_inicial_s,t_final_s,atrito
+M0_Q10,base,M0,Q10,10,,M0/M0_Q10,480000,0.003580827,25,0,6.00000088,calculado dos campos
+M0_Q35,base,M0,Q35,35,,M0/M0_Q35,480000,0.003580827,49,0,6.0002,calculado dos campos
+M0_Q60,base,M0,Q60,60,,M0/M0_Q60,480000,0.003580827,33,0,8.000099261,calculado dos campos
+M1_Q10,base,M1,Q10,10,,M1/M1_Q10,1620000,0.003581154,24,0.249825,5.999749258,calculado dos campos
+M1_Q20_R1,multiplicidade,M1,Q20,20,R1,M1_Q20_R1,1620000,0.003581154,42,0,5.999906712,calculado dos campos
+M1_Q20_R2,multiplicidade,M1,Q20,20,R2,M1_Q20_R2,1620000,0.003581154,25,0,6.000052093,calculado dos campos
+M1_Q20_R3,multiplicidade,M1,Q20,20,R3,M1_Q20_R3,1620000,0.003581154,25,0,5.999850763,calculado dos campos
+M1_Q35,base,M1,Q35,35,,M1/M1_Q35,1620000,0.003581154,25,0,6.000051593,calculado dos campos
+M1_Q55_R1,multiplicidade,M1,Q55,55,R1,M1_Q55_R1,1620000,0.003581154,25,0,6.000104212,calculado dos campos
+M1_Q55_R2,multiplicidade,M1,Q55,55,R2,M1_Q55_R2,1620000,0.003581154,25,0,5.999938745,calculado dos campos
+M1_Q55_R3,multiplicidade,M1,Q55,55,R3,M1_Q55_R3,1620000,0.003581154,25,0,5.99966816,calculado dos campos
+M1_Q60,base,M1,Q60,60,,M1/M1_Q60,1620000,0.003581154,25,0,5.999742567,calculado dos campos
+M2_Q10,base,M2,Q10,10,,M2/M2_Q10,5491800,0.0035813,24,0.249909,6.000016989,calculado dos campos
+M2_Q35,base,M2,Q35,35,,M2/M2_Q35,5491800,0.0035813,25,0,6.000084625,calculado dos campos
+M2_Q60,base,M2,Q60,60,,M2/M2_Q60,5491800,0.0035813,25,0,5.999870537,calculado dos campos

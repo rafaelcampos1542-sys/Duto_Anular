@@ -1,0 +1,37 @@
+{
+  "versao_extrator": "2.0.0",
+  "gerado_em": "2026-11-15T16:16:28",
+  "raiz": "/home/rafael_camps/OpenFOAM/rafael_camps-v2312/run/Duto_Anular",
+  "casos": [
+    "M0_Q10",
+    "M0_Q35",
+    "M0_Q60",
+    "M1_Q10",
+    "M1_Q20_R1",
+    "M1_Q20_R2",
+    "M1_Q20_R3",
+    "M1_Q35",
+    "M1_Q55_R1",
+    "M1_Q55_R2",
+    "M1_Q55_R3",
+    "M1_Q60",
+    "M2_Q10",
+    "M2_Q35",
+    "M2_Q60"
+  ],
+  "atrito": "calculado dos campos alpha.oil e wallShearStress",
+  "registros": {
+    "series_temporais": 422,
+    "atrito_paredes": 369,
+    "perfis_resumo": 2586,
+    "brutos": 7578
+  },
+  "arquivos_lidos": 1260,
+  "ocorrencias": 333,
+  "convencoes": {
+    "vazao": "L/min; positivo = entra por inlet_oil, sai por outlet e inlet_air",
+    "tensao": "Pa (wallShearStress cinemático x 900 kg/m³)",
+    "altura": "mm; inversão de A_L(h_L) do modelo analítico",
+    "conflitos": "mesmo tempo com valores diferentes: vale o reinício mais recente"
+  }
+}

@@ -12,6 +12,7 @@ log*
 *.log
 estrutura_.json
 leitor_pasta.py
+M*
 
 # ParaView
 *.foam
@@ -44,3 +45,4 @@ dynamicCode/
 backup_*
 # Deb packages
 *.deb
+M*

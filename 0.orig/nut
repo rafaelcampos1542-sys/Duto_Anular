@@ -17,24 +17,24 @@ internalField   uniform 0;
 
 boundaryField
 {
-    inlet
-    {
-        type            calculated;
-        value           uniform 0;
-    }
     outlet
     {
-        type            calculated;
-        value           uniform 0;
+          type            zeroGradient;
     }
     parede_interna
     {
-        type            nutkWallFunction;
-        value           uniform 0;
+          type            zeroGradient;
     }
     parede_externa
     {
-        type            nutkWallFunction;
-        value           uniform 0;
+          type            zeroGradient;
+    }
+    inlet_oil
+    {
+        type            zeroGradient;
+    }
+    inlet_air
+    {
+        type            zeroGradient;
     }
 }

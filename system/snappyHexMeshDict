@@ -1,0 +1,160 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2312                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+
+// Executa o refinamento local e o snapping nas superfícies
+castellatedMesh true;
+snap            true;
+addLayers       true;
+
+geometry
+{
+    parede_interna
+    {
+        type triSurfaceMesh;
+        file "parede_interna.stl";
+    }
+    parede_externa
+    {
+        type triSurfaceMesh;
+        file "parede_externa.stl";
+    }
+};
+
+castellatedMeshControls
+{
+    maxLocalCells       2000000;
+    maxGlobalCells      10000000;
+    minRefinementCells  10;
+    maxLoadUnbalance    0.10;
+    nCellsBetweenLevels 3;
+
+    features ();
+
+    refinementSurfaces
+    {
+        parede_interna
+        {
+            level (1 1);
+        }
+        parede_externa
+        {
+            level (1 1);
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    // Refinamento seletivo por distância para capturar o filme espesso/ondas sem encarecer o núcleo
+    refinementRegions
+    {
+        parede_externa
+        {
+            mode distance;
+            levels ((0.002 1)); // Refina nível 1 na região até 2mm da parede externa
+        }
+        parede_interna
+        {
+            mode distance;
+            levels ((0.002 1)); // Refina nível 1 na região até 2mm da parede interna
+        }
+    }
+
+    // Ponto no interior do domínio fluido
+    locationInMesh (0.045 0.0 0.0);
+
+    allowFreeStandingZoneFaces true;
+}
+
+snapControls
+{
+    nSolveIter          30;
+    maxRelax            5;
+    coordinateSystem    global;
+    nSmoothPatch        3;
+    tolerance           2.0;
+    nSolveIter          30;
+    nRelaxIter          5;
+    nFeatureSnapIter    10;
+}
+
+// Inserção de camadas prismáticas para resolver o filme e a tensão limite
+addLayersControls
+{
+    relativeSizes       true;
+
+    layers
+    {
+        "parede_interna.*"
+        {
+            nSurfaceLayers 3;
+        }
+        "parede_externa.*"
+        {
+            nSurfaceLayers 3;
+        }
+    }
+
+    expansionRatio      1.2;
+    finalLayerThickness 0.4;
+    minThickness        0.1;
+    nGrow               0;
+
+    featureAngle        60;
+    slipFeatureAngle    30;
+    nRelaxIter          3;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals      3;
+    nSmoothThickness    10;
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedialAxisAngle  90;
+    nBufferCellsNoExtrude 0;
+    nLayerIter          50;
+}
+
+meshQualityControls
+{
+    maxNonOrtho         65;
+    maxBoundarySkewness 20;
+    maxInternalSkewness 4;
+    maxConcave          80;
+    minVol              1e-13;
+    minTetQuality       1e-15;
+    minArea             -1;
+    minTwist            0.02;
+    minDeterminant      0.001;
+    minFaceWeight       0.02;
+    minVolRatio         0.01;
+    mustPointRatio      0.5;
+    minTriangleTwist   -1;
+
+    // Parâmetros de otimização exigidos no snapping pelo v2312
+    nSmoothScale        4;
+    errorReduction      0.75;
+
+    relaxed
+    {
+        maxNonOrtho     75;
+    }
+}
+
+writeFlags
+(
+    scalarLevels
+    layerSets
+    layerFields
+);
+
+mergeTolerance 1e-6;

@@ -1,0 +1,100 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \/     M anipulation  |                                                 |
+/*--------------------------------*- C++ -*----------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+
+solvers
+{
+    "alpha.oil.*"
+    {
+        nAlphaCorr      2;
+        nAlphaSubCycles 2;
+        cAlpha          1;
+        MULESCorr       yes;
+        nLimiterIter    8;
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+
+    "pcorr.*"
+    {
+        solver                  GAMG;
+        smoother                DICGaussSeidel;
+        tolerance               1e-5;
+        relTol                  0;
+        nCellsInCoarsestLevel   50; // Aumentado para acelerar coarsen em malhas refinadas
+        cacheAgglomeration      yes;
+        mergeLevels             1;
+    }
+
+    p_rgh
+    {
+        solver                  GAMG;
+        smoother                DICGaussSeidel;
+        tolerance               1e-6;   // Relaxado de 1e-7 para 1e-6 na etapa intermediária
+        relTol                  0.02;   // Permite convergência rápida sem iterações excessivas
+        nCellsInCoarsestLevel   50;
+        cacheAgglomeration      yes;
+        mergeLevels             1;
+    }
+
+    p_rghFinal
+    {
+        $p_rgh;
+        tolerance               1e-7;   // Precisão garantida no final
+        relTol                  0;
+    }
+
+    U
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0.05;
+        nSweeps         1;
+    }
+
+    UFinal
+    {
+        $U;
+        relTol          0;
+    }
+
+    "(k|omega).*"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.1;
+        nSweeps         1;
+    }
+}
+
+PIMPLE
+{
+    momentumPredictor        yes;
+    nOuterCorrectors         2;   // Reduzido de 3 para 2 (Ganho imediato de ~33% de tempo)
+    nCorrectors              2;   // Suficiente para estabilidade do PISO/PIMPLE
+    nNonOrthogonalCorrectors 0;   // Mantenha 0 se nonOrtho < 70
+    pRefCell                 0;
+    pRefValue                0;
+}
+
+relaxationFactors
+{
+    equations { ".*" 1; }
+}
+
+// ************************************************************************* //

@@ -20,8 +20,8 @@ scale 1;
 // =========================================================================
 rIn      0.0375;                      // Raio interno [m]
 rOut     0.0575;                      // Raio externo [m]
-yMin    -1.5;                         // Entrada em Y [m]
-yMax     1.5;                         // Saída em Y [m]
+yMin    -0.3;                         // Entrada em Y [m]
+yMax     0.3;                         // Saída em Y [m]
 
 // Pontos médios trigonométricos para os arcos de 45 graus
 rInMid   #calc "$rIn * 0.707106781";
@@ -35,9 +35,9 @@ rOutN    #calc "-1.0 * $rOut";
 // =========================================================================
 // DISCRETIZAÇÃO DA MALHA (Facilita o estudo de convergência de malha)
 // =========================================================================
-nAzim    20;    // Células por quadrante (Total perimetral = 80)
-nRad     20;    // Células no gap radial (entre rIn e rOut)
-nAxial  150;    // Células ao longo do duto (eixo Y)
+nAzim    75;    // Células por quadrante (Total perimetral = 80)
+nRad     30;    // Células no gap radial (entre rIn e rOut)
+nAxial  180;    // Células ao longo do duto (eixo Y)
 
 vertices
 (

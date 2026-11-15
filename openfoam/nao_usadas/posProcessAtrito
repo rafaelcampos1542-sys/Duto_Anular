@@ -1,0 +1,42 @@
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      posProcessAtrito;
+}
+
+functions
+{
+    tauWallMag
+    {
+        type            exprField;
+        libs            (fieldFunctionObjects);
+
+        field           tauWallMag;
+        expression      "mag(wallShearStress)";
+
+        readFields      (wallShearStress);
+
+        dimensions      [1 -1 -2 0 0 0 0];
+
+        autowrite       true;
+    }
+
+    tauWallMagOil
+    {
+        type            exprField;
+        libs            (fieldFunctionObjects);
+
+        field           tauWallMagOil;
+        expression      "alpha.oil*mag(wallShearStress)";
+
+        readFields      (alpha.oil wallShearStress);
+
+        dimensions      [1 -1 -2 0 0 0 0];
+
+        autowrite       true;
+    }
+}

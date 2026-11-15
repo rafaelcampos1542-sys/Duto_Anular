@@ -14,43 +14,17 @@ FoamFile
 }
 // ************************************************************************* //
 
-// Q = 35.00 L/min | h_L = 53.904 mm
-
 dimensions      [0 0 0 0 0 0 0];
 internalField   uniform 0;
 
 boundaryField
 {
-    inlet
-    {
-        type            codedFixedValue;
-        value           uniform 0;
-        name            alphaOilInletProfile;
-
-        code
-        #{ 
-            const scalar hL_target = 0.053904;
-            const scalar rOut      = 0.057500;
-            const scalar zIface    = -0.003596;
-
-            const fvPatch& p = this->patch();
-            scalarField alpha(p.size(), 0.0);
-
-            forAll(p, faceI)
-            {
-                scalar zf = p.Cf()[faceI].z();
-                alpha[faceI] = (zf < zIface) ? 1.0 : 0.0;
-            }
-
-            operator==(alpha);
-        #};
-    }
 
     outlet
     {
         type            inletOutlet;
         inletValue      uniform 0;
-        value           uniform 0;
+        value           $internalField;
     }
 
     parede_interna
@@ -61,5 +35,16 @@ boundaryField
     parede_externa
     {
         type            zeroGradient;
+    }
+    inlet_oil
+    {
+        type            fixedValue;
+        value           uniform 1;
+    }
+    inlet_air
+    {
+        type            inletOutlet;
+        inletValue      uniform 0;
+        value           uniform 0;
     }
 }

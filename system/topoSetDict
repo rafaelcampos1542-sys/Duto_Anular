@@ -1,0 +1,113 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+// ************************************************************************* //
+
+// -------------------------------------------------------------------------
+// Divide o patch inlet pela altura da interface
+//
+// Interface para h_L = 19.345 mm:
+// zInterface = h_L - rOut
+//             = 19.345 - 0.0575
+//             = -0.038155 m
+// -------------------------------------------------------------------------
+
+actions
+(
+    // ================================================================
+    // 1. Todas as faces atualmente pertencentes ao inlet
+    // ================================================================
+    {
+        name    inletFaces;
+        type    faceSet;
+        action  new;
+        source  patchToFace;
+
+        patches
+        (
+            inlet
+        );
+    }
+
+    // ================================================================
+    // 2. Faces do inlet abaixo da interface -> ÓLEO
+    // ================================================================
+    {
+        name    inletOil;
+        type    faceSet;
+        action  new;
+        source  boxToFace;
+
+        box
+        (
+            -0.06
+            -0.301
+            -0.0575
+
+        )
+        (
+             0.06
+            -0.299
+            -0.038155
+        );
+    }
+
+    // Manter somente faces que também pertencem ao inlet
+    {
+        name    inletOil;
+        type    faceSet;
+        action  subset;
+        source  patchToFace;
+
+        patches
+        (
+            inlet
+        );
+    }
+
+    // ================================================================
+    // 3. Faces do inlet acima da interface -> AR
+    // ================================================================
+    {
+        name    inletAir;
+        type    faceSet;
+        action  new;
+        source  boxToFace;
+
+        box
+        (
+            -0.06
+            -0.301
+            -0.038155
+        )
+        (
+             0.06
+            -0.299
+             0.0575
+        );
+    }
+
+    // Manter somente faces que também pertencem ao inlet
+    {
+        name    inletAir;
+        type    faceSet;
+        action  subset;
+        source  patchToFace;
+
+        patches
+        (
+            inlet
+        );
+    }
+);

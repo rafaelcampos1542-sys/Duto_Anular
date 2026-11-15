@@ -1,0 +1,8 @@
+type            surfaceFieldValue;
+libs            (fieldFunctionObjects);
+fields          (alpha.oil);
+operation       areaIntegrate;
+regionType      patch;
+name            parede_interna;
+writeFields     false;
+log             true;

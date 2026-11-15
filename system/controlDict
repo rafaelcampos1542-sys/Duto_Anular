@@ -16,19 +16,19 @@ FoamFile
 
 application     interIsoFoam;
 
-startFrom       startTime;
+startFrom       latestTime;
 
 startTime       0;
 
 stopAt          endTime;
 
-endTime         20;
+endTime         6;
 
 deltaT          0.0001;
 
 writeControl    runTime;
 
-writeInterval   0.2;
+writeInterval   0.25;
 
 purgeWrite      0;
 
@@ -40,20 +40,204 @@ writeCompression off;
 
 timeFormat      general;
 
-timePrecision   6;
+timePrecision   16;
 
 adjustTimeStep  yes;
 
-maxCo           0.5;
+maxCo           0.7;
 
 maxAlphaCo      0.5;
 
-maxDeltaT       0.001;
+maxDeltaT       0.005;
+
 
 libs            ( );
 
 functions
 {
+
+
+    atritoPonderado
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (wallShearStress);
+        operation       weightedAreaAverage;
+        weightField     alpha.oil;          // <-- faltava
+
+        regionType      patch;
+        name            parede_externa;
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    atritoExterno
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (wallShearStress);
+        operation       weightedAreaAverage;
+        weightField     alpha.oil;          // <-- faltava
+
+        regionType      patch;
+        name            parede_externa;
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    atritoInterno
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (wallShearStress);
+        operation       weightedAreaAverage;
+        weightField     alpha.oil;          // <-- faltava
+
+        regionType      patch;
+        name            parede_interna;
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+    
+    areaOleoExterna
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( alpha.oil );
+        operation       areaIntegrate;
+        regionType      patch;
+        name            parede_externa;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+    areaOleoInterno
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( alpha.oil );
+        operation       areaIntegrate;
+        regionType      patch;
+        name            parede_interna;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+    velocidadePonderada
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (U);
+        operation       weightedAreaAverage;
+        weightField     alpha.oil;          // pondera pelo óleo no plano
+
+        regionType      sampledSurface;
+        name            planoVelocidadeMeio;
+
+        sampledSurfaceDict
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+            pointAndNormalDict
+            {
+                point   (0 0 0);
+                normal  (0 1 0);
+            }
+            interpolate     true;
+        }
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+    
+    // --- 1. ATRITO NAS PAREDES (Wall Shear Stress) ---
+    // Calcula a tensão de corte em todas as paredes
+    wallShear
+    {
+        type            wallShearStress;
+        libs            (fieldFunctionObjects);
+
+        writeControl    writeTime;
+        writeFields     true;
+
+        patches         (parede_interna parede_externa);
+    }
+
+    // Calcula a média da tensão de corte na parede externa
+    atritoParedeExterna
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (wallShearStress);
+        operation       areaAverage;
+
+        regionType      patch;
+        name            parede_externa;
+
+        writeControl    writeTime;
+        writeFields     false;
+
+        log             true;
+    }
+
+
+
+    // --- 2. VELOCIDADE MÉDIA NO CENTRO DO TUBO ANULAR ---
+    velocidadeMediaMeio
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        fields          (U);
+        operation       areaAverage;
+
+        regionType      sampledSurface;
+        name            planoVelocidadeMeio;
+
+        sampledSurfaceDict
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+
+            pointAndNormalDict
+            {
+                point       (0 0 0);
+                normal      (0 1 0);
+            }
+            interpolate     true;
+        }
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+    // --- 3. FRAÇÃO VOLUMÉTRICA MÉDIA (ALTURA EQUIVALENTE) ---
+    // O seu volumeOleo já calcula o volume integrado.
+    // A altura/fração média é dada por: phi = volumeOleoTQ18 / V_total
+    volumeOleo
+    {
+        type            volFieldValue;
+        libs            (fieldFunctionObjects);
+        fields          (alpha.oil);
+        operation       volIntegrate;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
     sampling
     {
         type            sets;
@@ -76,8 +260,8 @@ functions
             {
                 type            uniform;
                 axis            z;
-                start           ( 0 1.5 -0.0575 );
-                end             ( 0 1.5 0.0575 );
+                start           ( 0 0.3 -0.0575 );
+                end             ( 0 0.3 0.0575 );
                 nPoints         100;
             }
             perfil_vertical_debug
@@ -87,7 +271,47 @@ functions
                 points          ( ( 0 0 -0.0575 ) ( 0 0 0.0575 ) );
                 nPoints         200;
             }
+            perfil_lateral_esquerdo
+            {
+                type        uniform;
+                axis        z;
+                start       (-0.0475 0 -0.0575);
+                end         (-0.0475 0  0.0575);
+                nPoints     200;
+            }
         }
+    }
+
+
+    QOleoMeio
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        regionType      sampledSurface;
+        name            plano_meio;
+
+        operation       weightedAreaIntegrate;
+        fields          ( U );
+        weightField     alpha.oil;
+
+        sampledSurfaceDict
+        {
+            type            cuttingPlane;
+            planeType       pointAndNormal;
+
+            pointAndNormalDict
+            {
+                point       (0 0 0);
+                normal      (0 1 0);
+            }
+
+            interpolate     true;
+        }
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
     }
     areaOleoMeio
     {
@@ -120,7 +344,7 @@ functions
         operation       weightedSum;
         weightField     alpha.oil;
         regionType      patch;
-        name            inlet;
+        name            inlet_oil;
         writeControl    writeTime;
         writeFields     false;
         log             true;
@@ -152,7 +376,7 @@ functions
             planeType       pointAndNormal;
             pointAndNormalDict
             {
-                point           ( 0 1.5 0 );
+                point           ( 0 0.3 0 );
                 normal          ( 0 1 0 );
             }
             interpolate     true;
@@ -161,6 +385,38 @@ functions
         writeFields     false;
         log             true;
     }
+    areaOleoInlet
+    {
+        type            surfaceFieldValue;
+        libs            ( fieldFunctionObjects );
+        fields          ( alpha.oil );
+        operation       areaIntegrate;
+        regionType      patch;
+        name            inlet_oil;
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+    QOleoInletAir
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        regionType      patch;
+        name            inlet_air;
+
+        operation       weightedSum;
+        fields          (phi);
+        weightField     alpha.oil;
+
+        writeControl    writeTime;
+        writeFields     false;
+        log             true;
+    }
+
+
+
 }
 
 

@@ -1,458 +1,181 @@
-# Canal Anular — Estrutura Consolidada
+# Pós-processamento — Duto Anular (OpenFOAM)
 
-Esta versão reduz os scripts de controle e elimina funções Python duplicadas.
+Três scripts, rodados em ordem. O primeiro lê os casos do OpenFOAM e grava CSVs.
+Os outros dois leem só esses CSVs.
 
-## Arquivos
+| Script | O que faz | Lê | Grava |
+|---|---|---|---|
+| `01_extrair_dados.py` | Extrai e trata os dados dos casos | pastas dos casos | `dados_extraidos/` |
+| `02_analise_gci.py` | Convergência de malha (GCI) | `dados_extraidos/` | `resultados/gci/` |
+| `03_comparar_analitico_cfd.py` | Modelo analítico x CFD (base e multiplicidade) | `dados_extraidos/` | `resultados/analitico_cfd/` |
 
-```text
-Duto_Anular/
-├── Allrun
-├── Allclean
-├── benchmark.sh
-├── modelo_anular.py
-├── analise.py
-├── README.md
-├── 0.orig/
-├── 0/
-├── constant/
-└── system/
-```
-
-### `modelo_anular.py`
-
-É o único módulo responsável pelo modelo analítico e pela geração das condições de contorno.
-
-Consolida as funções que existiam em `calculadora_anular.py` e `calcular_condicoes.py`:
-
-- geometria do canal;
-- área de segmento circular;
-- perímetro molhado;
-- diâmetro hidráulico;
-- fator de atrito de Churchill;
-- velocidade e vazão;
-- busca das raízes `Q(h_L)`;
-- identificação da região;
-- geração de `setFieldsDict`;
-- geração de `alpha.oil`;
-- geração de `U`;
-- geração de `turbulenceProperties`.
-
-### `analise.py`
-
-É o único módulo de pós-processamento.
-
-Consolida:
-
-- `analisar_resultados.py`;
-- comparação analítico x CFD;
-- diagnóstico `perfil_meio`;
-- diagnóstico `perfil_saida`;
-- detecção de gap;
-- cruzamento `alpha.oil = 0.5`;
-- análise da derivada da interface;
-- gráficos.
-
-### `Allrun`
-
-É o ponto de entrada principal para a simulação.
-
-### `Allclean`
-
-Limpa o caso sem apagar `0.orig/`.
-
-### `benchmark.sh`
-
-Executa os testes de desempenho dos solvers. Continua separado porque benchmark é uma tarefa diferente da execução normal.
-
----
-
-# 1. Primeira configuração
-
-Carregue o OpenFOAM:
+## Como rodar
 
 ```bash
-source /caminho/do/OpenFOAM/etc/bashrc
+pip install -r requirements.txt
+
+python 01_extrair_dados.py --raiz /caminho/dos/casos
+python 02_analise_gci.py
+python 03_comparar_analitico_cfd.py
 ```
 
-Se o ambiente já estiver configurado no `.bashrc`, basta abrir o terminal normalmente.
+O script 01 não altera nada dentro dos casos. Os scripts 02 e 03 não precisam
+do OpenFOAM nem dos casos: bastam os CSVs de `dados_extraidos/`.
 
-Verifique:
+Opções úteis:
+
+| Comando | Para quê |
+|---|---|
+| `01_extrair_dados.py --sem-atrito` | pula a leitura dos campos (rápido) |
+| `01_extrair_dados.py --atrito-csv dados_extraidos/atrito_paredes.csv` | reaproveita um atrito já calculado (quando os campos não estão mais no disco) |
+| `02_analise_gci.py --janela 4 5` | muda a janela das médias temporais |
+| `03_comparar_analitico_cfd.py --parte multiplicidade` | roda só uma parte (`base`, `multiplicidade` ou `tudo`) |
+
+## Estrutura
+
+```
+01_extrair_dados.py
+02_analise_gci.py
+03_comparar_analitico_cfd.py
+duto_anular/                 biblioteca usada pelos três scripts
+    modelo_anular.py         modelo analítico h_L(Q) e condições do OpenFOAM
+    casos.py                 nomes dos casos, malhas, janelas padrão
+    funcoes_openfoam.py      SELEÇÃO das function objects (usada / descartada)
+    leitura_openfoam.py      leitura dos .dat e dos perfis de linha
+    atrito.py                atrito nas paredes a partir dos campos
+    estatistica.py           médias temporais e GCI
+    dados.py                 leitura dos CSVs extraídos, h_L por área, Re e Fr
+openfoam/                    controlDict e function objects (ver README da pasta)
+legado/                      scripts antigos, só para consulta (ver README da pasta)
+dados_extraidos/             gerado pelo script 01
+resultados/                  gerado pelos scripts 02 e 03
+```
+
+## Organização dos casos
+
+Um caso é uma pasta chamada `M<malha>_Q<vazão>` ou `M<malha>_Q<vazão>_R<raiz>`,
+em qualquer nível abaixo de `--raiz`:
+
+```
+M0/M0_Q10   M0/M0_Q35   M0/M0_Q60
+M1/M1_Q10   M1/M1_Q35   M1/M1_Q60
+M2/M2_Q10   M2/M2_Q35   M2/M2_Q60
+M1_Q20_R1   M1_Q20_R2   M1_Q20_R3
+M1_Q55_R1   M1_Q55_R2   M1_Q55_R3
+```
+
+Cada caso precisa de `postProcessing/`. Para o atrito, precisa também de
+`constant/polyMesh/` e dos campos `alpha.oil` e `wallShearStress` em cada tempo
+(formato ascii). Pastas `backup*`, `resultados*` e `processor*` são ignoradas.
+
+## O que sai de cada script
+
+### `dados_extraidos/` (script 01)
+
+| Arquivo | Conteúdo |
+|---|---|
+| `series_temporais.csv` | **tabela principal**: uma linha por caso e por tempo |
+| `casos.csv` | casos encontrados, número de células, tempos, origem do atrito |
+| `atrito_paredes.csv` | atrito calculado dos campos, com todas as colunas |
+| `perfis_resumo.csv` | linhas de amostragem: interface e velocidade por fase |
+| `brutos/functionObjects.csv` | todo registro lido, com arquivo e linha de origem |
+| `auditoria/selecao_funcoes.csv` | funções usadas e descartadas, com o motivo |
+| `auditoria/cobertura.csv` | quantos registros há de cada grandeza em cada caso |
+| `auditoria/ocorrencias.csv` | o que está faltando ou precisa de revisão |
+| `auditoria/inventario_arquivos.csv` | cada arquivo lido, com cabeçalho e hash |
+
+Colunas de `series_temporais.csv`:
+
+| Coluna | Origem | Observação |
+|---|---|---|
+| `Q_in_L_min` | QOleoInlet | positivo = entra por `inlet_oil` |
+| `Q_out_L_min` | QOleoOutlet | positivo = sai por `outlet` |
+| `Q_inlet_air_L_min` | QOleoInletAir | positivo = sai por `inlet_air` |
+| `Q_meio_L_min`, `Q_proximo_L_min` | QOleoMeio, QOleoProximo | planos y = 0 e y = −0,15 m |
+| `A_oleo_*_m2` | areaOleoInlet/Meio/Saida/Proximo | área de óleo na seção |
+| `h_entrada_mm`, `h_meio_mm`, `h_saida_mm`, `h_proximo_mm` | calculada | inversão de A_L(h_L) do modelo |
+| `V_meio_m_s` | velocidadePonderada | componente axial (y) |
+| `volume_oleo_m3` | volumeOleo | |
+| `A_molhada_*_fo_m2`, `tau_fo_*_Pa` | areaOleoExterna/Interna, atritoExterno/Interno | function objects; conferência |
+| `integral_tau_ponderada_*_N` | campos + malha | **forças de atrito do TCC** |
+| `area_ponderada_oleo_*_m2` | campos + malha | **área ponderada do TCC** |
+| `tau_media_*_Pa` | campos + malha | tensão média (Figura C.1) |
+
+### `resultados/gci/` (script 02)
+
+| Arquivo | No TCC |
+|---|---|
+| `tabela_gci.csv` | Tabelas 2, 3, A.1 e B.1 |
+| `relatorio_gci_completo.csv` | todos os indicadores (R, p, GCI, razão assintótica, CV, deriva) |
+| `medias_por_malha.csv` | médias temporais por malha |
+| `taxas_de_variacao.csv` | Tabela C.1 (taxas entre 5 e 6 s) |
+| `figuras/Q10_atrito_total.png` … | Figura C.1 |
+
+### `resultados/analitico_cfd/` (script 03)
+
+| Arquivo | No TCC |
+|---|---|
+| `base/tabela4_parametros.csv` | Tabela 4 e velocidades, Re, Fr da Seção 4.2 |
+| `base/tabela5_balanco.csv` | Tabela 5 |
+| `base/tabela6_analitico_cfd.csv` | Tabela 6 |
+| `base/altura_central_por_malha.csv` | variação de h_L entre malhas (Seção 4.3) |
+| `base/diagnostico_perfil_central.csv` | ar em contracorrente na linha central (Seção 4.3) |
+| `base/figuras/comparacao_analitico_cfd_M1.png` | Figura 7 |
+| `multiplicidade/tabela7_estatisticas.csv` | Tabela 7 |
+| `multiplicidade/analitico_cfd.csv` | diferenças de altura da Seção 4.4 |
+| `multiplicidade/repetibilidade.csv` | CV_r |
+| `multiplicidade/estabilidade.csv` | estável / transiente |
+| `multiplicidade/figuras/evolucao_temporal_M1.png` | Figura 8 |
+| `multiplicidade/figuras/repetibilidade_M1_Q20.png`, `…_Q55.png` | Apêndice 9 |
+
+## Seleção das function objects
+
+A lista fica em `duto_anular/funcoes_openfoam.py`. Para incluir uma função nova,
+basta acrescentar uma linha lá.
+
+**Usadas:** QOleoInlet, QOleoOutlet, QOleoInletAir, QOleoMeio, QOleoProximo,
+areaOleoInlet, areaOleoMeio, areaOleoSaida, areaOleoProximo, velocidadePonderada,
+volumeOleo, areaOleoExterna, areaOleoInterna, atritoExterno, atritoInterno.
+
+**Descartadas** (ficam só em `brutos/`):
+
+| Função | Motivo |
+|---|---|
+| `atritoPonderado` | duplicata exata de `atritoExterno` |
+| `atritoParedeExterna` | média sem peso: mistura parede molhada e seca |
+| `velocidadeMediaMeio` | média sem peso: dominada pelo ar (≈ −5,9 m/s em M1_Q10) |
+| `wallShear` | guarda só mínimo e máximo |
+| `alphaStats` | redundante com `volumeOleo` |
+
+O cabeçalho de cada `.dat` também é conferido (patch, operação e campo de peso).
+Arquivo com cabeçalho diferente do esperado fica fora dos dados tratados e
+aparece como erro em `auditoria/ocorrencias.csv`. Isso pega, por exemplo, um
+atrito gravado antes de o `weightField` ser incluído.
+
+## Diferenças em relação aos scripts antigos
+
+As contas (média trapezoidal, GCI, estatísticas de Q20/Q55, CV_r, atrito) são as
+mesmas. O que mudou foi a leitura dos dados:
+
+1. **Trechos de reinício.** Todos os trechos (`0/`, `0.249825/`, `4.9997…/`) são
+   unidos. O `analise.py` antigo lia um arquivo só de `areaOleoMeio` e usava o
+   tempo mais próximo; com isso, a altura `h_L_meio_mm` de `resultados_hL.csv`
+   podia ficar repetida depois do fim desse arquivo.
+2. **Uma fonte só para h_L.** Antes havia `resultados_hL.csv` (Tabelas 6 e 7,
+   Figuras 7 e 8) e `comparar_planos_axiais.py` (CV_r). Agora tudo usa `h_meio_mm`.
+3. **Tempos com valores diferentes em dois trechos.** Vale o reinício mais
+   recente, e o conflito é registrado. Antes cada script tinha uma regra.
+4. **Tensão média em parede seca** (área molhada < 1e-8 m²) fica vazia.
+5. **Itens não migrados** de `analise.py`: `TauParedeInterna/Externa` (funções
+   que não existem no `controlDict`) e `tau_CFD_eq_Pa` (usava L = 3,0 m; o
+   domínio tem 0,60 m).
+
+## Modelo analítico
+
+`duto_anular/modelo_anular.py` é o mesmo arquivo de antes. Para gerar as
+condições de um caso:
 
 ```bash
-which blockMesh
-which interIsoFoam
+python -m duto_anular.modelo_anular condicoes 35 --case M1/M1_Q35
+python -m duto_anular.modelo_anular condicoes 20 --raiz 2 --case M1_Q20_R2
 ```
-
----
-
-# 2. Ambiente Python
-
-Se o `venv` já existe:
-
-```bash
-./venv/bin/pip install numpy scipy matplotlib pandas
-```
-
-Caso ainda não exista:
-
-```bash
-python3 -m venv venv
-./venv/bin/pip install numpy scipy matplotlib pandas
-```
-
----
-
-# 3. Dar permissão aos scripts
-
-Execute uma vez:
-
-```bash
-chmod +x Allrun Allclean benchmark.sh modelo_anular.py analise.py
-```
-
----
-
-# 4. Calcular as condições
-
-Exemplo para 35 L/min:
-
-```bash
-./Allrun condicoes 35
-```
-
-Isso calcula a raiz estável e gera diretamente:
-
-```text
-system/setFieldsDict
-0.orig/alpha.oil
-0.orig/U
-constant/turbulenceProperties
-```
-
-A condição é colocada em `0.orig/` porque esse diretório é a fonte usada para reconstruir `0/` depois da limpeza.
-
----
-
-# 5. Executar uma simulação completa
-
-A forma mais simples:
-
-```bash
-./Allrun full 35 gamg
-```
-
-Sequência:
-
-```text
-calcular condições
-        ↓
-clean
-        ↓
-blockMesh
-        ↓
-checkMesh
-        ↓
-setFields
-        ↓
-decomposePar
-        ↓
-interIsoFoam
-        ↓
-reconstructPar
-        ↓
-sampling
-        ↓
-resultados
-        ↓
-diagnóstico VOF
-        ↓
-comparação analítica
-```
-
----
-
-# 6. Escolher o solver
-
-### GAMG
-
-```bash
-./Allrun full 35 gamg
-```
-
-### PETSc CPU
-
-```bash
-./Allrun full 35 petsc_cpu
-```
-
-### PETSc GPU
-
-```bash
-./Allrun full 35 petsc_gpu
-```
-
----
-
-# 7. Rodar somente 5 segundos
-
-```bash
-./Allrun run5 petsc_cpu
-```
-
-Ou:
-
-```bash
-./Allrun run gamg 5
-```
-
-O número de processos pode ser alterado:
-
-```bash
-NPROCS=14 ./Allrun run petsc_cpu 5
-```
-
----
-
-# 8. Rodar sem recalcular as condições
-
-Se as condições já estiverem configuradas:
-
-```bash
-./Allrun run petsc_cpu
-```
-
-Isso usa o `endTime` existente no `system/controlDict`.
-
----
-
-# 9. Pós-processamento
-
-Depois que a simulação terminar:
-
-```bash
-./Allrun post
-```
-
-São gerados:
-
-```text
-resultados_hL.csv
-diagnostico_vof_perfil_meio.png
-```
-
-O CSV contém, entre outros:
-
-```text
-tempo
-h_L meio
-h_L saída
-h_L vertical
-Q meio
-Q saída
-Q teórica
-```
-
----
-
-# 10. Comparação analítico x CFD
-
-```bash
-./Allrun compare
-```
-
-Gera:
-
-```text
-comparacao_analitico_cfd.png
-```
-
-A comparação usa o mesmo `modelo_anular.py`, evitando manter uma segunda implementação da curva analítica.
-
----
-
-# 11. Diagnóstico VOF isolado
-
-Para investigar problemas no `perfil_meio`:
-
-```bash
-./venv/bin/python analise.py diagnostico
-```
-
-O diagnóstico verifica:
-
-- `alpha.oil`;
-- posição da interface `alpha=0.5`;
-- derivada da interface;
-- espaçamento da amostragem;
-- existência de gap;
-- possível passagem da linha pelo tubo interno;
-- diferença entre `perfil_meio` e `perfil_saida`.
-
----
-
-# 12. Status do caso
-
-```bash
-./Allrun status
-```
-
-Mostra:
-
-- existência da malha;
-- `0/`;
-- `0.orig/`;
-- número de tempos;
-- último tempo;
-- decomposição;
-- CSV;
-- gráfico da comparação.
-
----
-
-# 13. Limpar o caso
-
-```bash
-./Allrun clean
-```
-
-ou:
-
-```bash
-./Allclean
-```
-
-A limpeza remove:
-
-- tempos numéricos;
-- `processor*`;
-- `postProcessing`;
-- logs;
-- `dynamicCode`;
-- `case.foam`.
-
-Mas preserva:
-
-```text
-0.orig/
-system/
-constant/
-```
-
-Depois recria:
-
-```text
-0/
-```
-
-a partir de:
-
-```text
-0.orig/
-```
-
----
-
-# 14. Benchmark
-
-O benchmark continua separado:
-
-```bash
-./benchmark.sh
-```
-
-Ele compara as configurações disponíveis em:
-
-```text
-system/fvSolution.gamg.bak
-system/fvSolution.petsc_cpu.bak
-system/fvSolution.amgx.bak
-```
-
-e testa os números de processos definidos no script.
-
-Os principais parâmetros podem ser alterados por variável de ambiente:
-
-```bash
-BENCH_TIME=0.1 \
-WRITE_INTERVAL=0.05 \
-CHECK_INTERVAL=10 \
-TIMEOUT_LIMIT=20m \
-./benchmark.sh
-```
-
----
-
-# 15. Comandos mais importantes
-
-Na prática, você vai usar principalmente:
-
-```bash
-# Gerar condições
-./Allrun condicoes 35
-
-# Rodar tudo
-./Allrun full 35 petsc_cpu
-
-# Teste rápido
-./Allrun run5 petsc_cpu
-
-# Pós-processar
-./Allrun post
-
-# Comparar
-./Allrun compare
-
-# Ver status
-./Allrun status
-
-# Limpar
-./Allrun clean
-
-# Benchmark
-./benchmark.sh
-```
-
-## Fluxo recomendado
-
-Para uma nova vazão:
-
-```bash
-./Allrun full 35 petsc_cpu
-```
-
-Depois, para outra vazão:
-
-```bash
-./Allrun full 20 petsc_cpu
-```
-
-e:
-
-```bash
-./Allrun full 50 petsc_cpu
-```
-
-Não é necessário executar manualmente `calcular_condicoes.py`, `master.sh`, `run_pipeline.sh`, `run_until.sh` ou `compare_analytic.sh`.
-
----
-
-## Arquivos antigos que podem ser removidos depois de testar
-
-Após confirmar que a versão consolidada funciona no caso, estes scripts deixam de ser necessários:
-
-```text
-master.sh
-run_pipeline.sh
-run_until.sh
-calculadora_anular.py
-calcular_condicoes.py
-analisar_resultados.py
-compare_analytic.sh
-debug_perfil_meio.py
-diagnostico_vof_perfil_meio.py
-diagnostico_vof_perfil_meio_v2.py
-Allrun_bench
-analisar_benchmark.sh
-```
-
-Não apague imediatamente. Rode primeiro alguns casos e compare os resultados com a versão antiga.

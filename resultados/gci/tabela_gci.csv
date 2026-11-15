@@ -1,0 +1,22 @@
+Caso,Grandeza,Ordem p,Diferença M1–M2 (%),GCI21 (%),GCI32 (%),Diagnóstico
+Q10,Atrito interno (N),,,,,Parede praticamente seca
+Q10,Atrito externo (N),0.361,0.72,,,Ordem baixa
+Q10,Atrito total (N),0.361,0.72,,,Ordem baixa
+Q10,Área ponderada (m2),,0.09,,,Oscilatória
+Q10,Vazão central (L/min),,0.406,,,Divergência monotônica
+Q10,Velocidade média (m/s),,0.204,,,Divergência monotônica
+Q10,Volume de óleo (m3),1.623,0.111,0.148,0.287,Favorável
+Q35,Atrito interno (N),0.493,1.058,,,Ordem baixa
+Q35,Atrito externo (N),0.431,0.997,,,Ordem baixa
+Q35,Atrito total (N),0.458,1.022,,,Ordem baixa
+Q35,Área ponderada (m2),1.168,0.395,0.812,1.311,Favorável
+Q35,Vazão central (L/min),0.152,0.487,,,Ordem baixa
+Q35,Velocidade média (m/s),,0.042,,,Oscilatória
+Q35,Volume de óleo (m3),1.12,0.418,0.904,1.432,Favorável
+Q60,Atrito interno (N),,1.091,,,Divergência monotônica
+Q60,Atrito externo (N),,0.914,,,Divergência monotônica
+Q60,Atrito total (N),,0.996,,,Divergência monotônica
+Q60,Área ponderada (m2),3.837,0.355,0.118,0.564,Favorável
+Q60,Vazão central (L/min),,0.531,,,Divergência monotônica
+Q60,Velocidade média (m/s),1.692,0.069,,,Oscilatória
+Q60,Volume de óleo (m3),,0.46,,,Divergência monotônica

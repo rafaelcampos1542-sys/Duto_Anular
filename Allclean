@@ -1,31 +1,176 @@
 #!/bin/bash
-# Allclean — limpeza segura do caso Canal Anular.
-# Mantém 0.orig/ e os arquivos de configuração do caso.
-set -euo pipefail
+#===============================================================================
+# ALLCLEAN — Limpeza inteligente com backup automático
+# Canal Anular — OpenFOAM v2312
+#===============================================================================
+set -e
 
-CASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$CASE_DIR"
+cd "${0%/*}" || exit 1
 
-RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[1;33m'; NC='\033[0m'
-info(){ echo -e "\033[0;34m[INFO]\033[0m $*"; }
-ok(){ echo -e "${GRN}[OK]${NC} $*"; }
-warn(){ echo -e "${YLW}[AVISO]${NC} $*"; }
-err(){ echo -e "${RED}[ERRO]${NC} $*"; }
+# ── CONFIGURAÇÕES ───────────────────────────────────────────────────────────
+LIMITE_TAMANHO_MB=50
+MAX_BACKUPS=20                    # Mantém apenas os N backups mais recentes
+PRESERVAR_MALHA=true           # true = não deleta constant/polyMesh
 
-if [[ ! -d 0.orig ]]; then
-    err "0.orig/ não existe. Limpeza abortada para evitar perda de condições iniciais."
-    exit 1
+# Cores para output
+RED='\033[0;31m'
+GRN='\033[0;32m'
+YLW='\033[1;33m'
+BLU='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info()  { echo -e "${BLU}[INFO]${NC} $1"; }
+log_warn()  { echo -e "${YLW}[WARN]${NC} $1"; }
+log_ok()    { echo -e "${GRN}[OK]${NC} $1"; }
+log_error() { echo -e "${RED}[ERRO]${NC} $1"; }
+
+get_size() {
+    du -sm . 2>/dev/null | cut -f1
+}
+
+contar_backups() {
+    ls -1d backup_* 2>/dev/null | wc -l
+}
+
+rotacionar_backups() {
+    local count=$(contar_backups)
+    if [ "$count" -ge "$MAX_BACKUPS" ]; then
+        log_warn "Mais de $MAX_BACKUPS backups. Removendo o mais antigo..."
+        ls -1td backup_* 2>/dev/null | tail -n 1 | xargs rm -rf
+    fi
+}
+
+# Copia um arquivo com verificação de integridade (tamanho > 0),
+# em vez de criar um placeholder vazio quando ele não existe.
+copiar_arquivo_seguro() {
+    local origem="$1"
+    local destino="$2"
+
+    if [ -f "$origem" ]; then
+        if [ -s "$origem" ]; then
+            cp -p "$origem" "$destino"
+            log_ok "  Copiado: $origem -> $destino"
+        else
+            log_warn "  $origem existe mas está vazio (0 bytes) — não copiado"
+        fi
+    else
+        log_warn "  $origem não encontrado — pulando (normal na primeira rodada)"
+    fi
+}
+
+# ── 1. DETECTAR RESULTADOS ─────────────────────────────────────────────────
+HAS_RESULTS=false
+RESULT_DIRS=""
+
+for d in [0-9]* [0-9].[0-9]*; do
+    if [ -d "$d" ] && [ "$d" != "0" ] && [ "$d" != "0.orig" ]; then
+        HAS_RESULTS=true
+        RESULT_DIRS="$RESULT_DIRS $d"
+    fi
+done
+
+# ── 2. BACKUP INTELIGENTE ──────────────────────────────────────────────────
+if [ "$HAS_RESULTS" = true ]; then
+    TAMANHO_ATUAL=$(get_size)
+    log_info "Tamanho atual do caso: ${TAMANHO_ATUAL}MB"
+
+    # Sempre faz backup se houver resultados (independente de tamanho)
+    # Mas avisa se for muito grande
+    if [ "$TAMANHO_ATUAL" -gt "$LIMITE_TAMANHO_MB" ]; then
+        log_warn "Caso grande detectado (${TAMANHO_ATUAL}MB > ${LIMITE_TAMANHO_MB}MB)"
+    fi
+
+    rotacionar_backups
+
+    BACKUP="backup_$(date +%Y%m%d_%H%M%S)"
+    log_info "Gerando backup em $BACKUP/ ..."
+    mkdir -p "$BACKUP"
+
+    # Copiar diretórios de tempo (excluindo 0 e 0.orig)
+    for d in $RESULT_DIRS; do
+        if [ -d "$d" ]; then
+            cp -r "$d" "$BACKUP/" 2>/dev/null || log_warn "Falha ao copiar $d"
+        fi
+    done
+
+    if [ -d "constant" ]; then
+        cp -r "constant" "$BACKUP/" 2>/dev/null || log_warn "Falha ao copiar constant"
+    fi
+
+    if [ -d "postProcessing" ]; then
+        cp -r "postProcessing" "$BACKUP/" 2>/dev/null || log_warn "Falha ao copiar postProcessing"
+    fi
+
+    # Logs e configs
+    cp log.*                   "$BACKUP/" 2>/dev/null || true
+    cp system/fvSolution       "$BACKUP/fvSolution.usado" 2>/dev/null || true
+    cp system/fvSchemes        "$BACKUP/fvSchemes.usado"  2>/dev/null || true
+    cp system/controlDict      "$BACKUP/controlDict.usado" 2>/dev/null || true
+    cp system/blockMeshDict    "$BACKUP/blockMeshDict.usado" 2>/dev/null || true
+
+    # Salvar estado das condições de contorno
+    if [ -d "0" ]; then
+        cp -r 0 "$BACKUP/0_final" 2>/dev/null || true
+    fi
+
+    # ── RESULTADOS DE PÓS-PROCESSAMENTO (corrigido) ────────────────────────
+    # Antes: 'touch' criava arquivos VAZIOS com esses nomes, corrompendo o
+    # backup. Agora: copia de fato o conteúdo gerado por master.sh compare/post.
+    log_info "Copiando resultados de pós-processamento..."
+    copiar_arquivo_seguro "comparacao_analitico_cfd.png" "$BACKUP/comparacao_analitico_cfd.png"
+    copiar_arquivo_seguro "comparacao_cisalhamento_churchill.png" "$BACKUP/comparacao_cisalhamento_churchill.png"
+    copiar_arquivo_seguro "balanco_vazao_oleo.png" "$BACKUP/balanco_vazao_oleo.png"
+    copiar_arquivo_seguro "resultados_hL.csv"             "$BACKUP/resultados_hL.csv"
+
+    # case.foam vazio é proposital (marcador pro ParaView abrir a pasta)
+    touch "$BACKUP/case.foam"
+
+    # Metadados do backup
+    cat > "$BACKUP/README.txt" << EOF
+Backup gerado em: $(date)
+Tamanho: ${TAMANHO_ATUAL}MB
+Diretórios: $RESULT_DIRS
+Comando: $0
+EOF
+
+    log_ok "Backup salvo em $BACKUP/ (${TAMANHO_ATUAL}MB)"
+else
+    log_info "Nenhum resultado encontrado. Pulando backup."
 fi
 
-info "Removendo resultados, logs, decomposição e malha..."
+# ── 3. LIMPEZA COMPLETA ────────────────────────────────────────────────────
+log_info "Limpando ambiente..."
 
-rm -rf processor* dynamicCode postProcessing \
-    log.* *.foam 2>/dev/null || true
+# Remover diretórios de tempo (exceto 0 e 0.orig)
+for d in [0-9]* [0-9].[0-9]*; do
+    if [ -d "$d" ] && [ "$d" != "0" ] && [ "$d" != "0.orig" ]; then
+        rm -rf "$d"
+    fi
+done
 
-find . -maxdepth 1 -type d -regextype posix-extended \
-    -regex './[0-9]+(\.[0-9]+)?' -exec rm -rf {} + 2>/dev/null || true
+rm -rf processor*
+rm -rf dynamicCode
+rm -f log.*
+rm -f *.foam
+rm -f postProcessing/* 2>/dev/null || true
+rm -rf postProcessing/sets 2>/dev/null || true
 
-rm -rf 0 2>/dev/null || true
-cp -r 0.orig 0
+# Limpar 0 atual e restaurar de 0.orig
+if [ -d "0.orig" ]; then
+    rm -rf 0
+    cp -r 0.orig 0
+    log_ok "Condições iniciais restauradas de 0.orig → 0"
+else
+    log_warn "0.orig não encontrado. Mantendo 0/ atual."
+fi
 
-ok "Caso limpo e 0/ restaurado a partir de 0.orig/."
+# Preservar malha?
+if [ "$PRESERVAR_MALHA" = false ]; then
+    rm -rf constant/polyMesh
+    log_info "Malha removida (será regenerada pelo blockMesh)"
+else
+    log_info "Malha preservada em constant/polyMesh/"
+fi
+
+touch case.foam
+log_ok "Ambiente pronto para nova simulação!"

@@ -15,298 +15,359 @@ cd "$CASE_DIR"
 cd "${0%/*}" || exit 1
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions
 
-RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[1;33m'
-BLU='\033[0;34m'; CYN='\033[0;36m'; NC='\033[0m'
 
+
+
+RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
 info(){ echo -e "${BLU}[INFO]${NC} $*"; }
 ok(){ echo -e "${GRN}[OK]${NC} $*"; }
 warn(){ echo -e "${YLW}[AVISO]${NC} $*"; }
 err(){ echo -e "${RED}[ERRO]${NC} $*"; }
 
-PYTHON="${PYTHON:-$CASE_DIR/venv/bin/python}"
-if [[ ! -x "$PYTHON" ]]; then PYTHON="$(command -v python3 || true)"; fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_BIN="$SCRIPT_DIR/../venv/bin/python"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+    err "Python do venv não encontrado:"
+    err "$PYTHON_BIN"
+    exit 1
+fi
 
-source_foam() {
-    if [[ -n "${WM_PROJECT_DIR:-}" && -f "$WM_PROJECT_DIR/bin/tools/RunFunctions" ]]; then
-        # shellcheck disable=SC1090
-        source "$WM_PROJECT_DIR/bin/tools/RunFunctions"
-    fi
-    if ! command -v blockMesh >/dev/null 2>&1; then
-        err "OpenFOAM não está carregado. Execute: source <OpenFOAM>/etc/bashrc"
-        exit 1
-    fi
-}
+info "Python: $PYTHON_BIN"
+"$PYTHON_BIN" -c "import numpy; print('[OK] NumPy:', numpy.__version__)"
 
-need_python() {
-    [[ -n "$PYTHON" && -x "$PYTHON" ]] || {
-        err "Python não encontrado. Crie/ative o venv ou defina PYTHON=/caminho/python."
+need_python(){
+    [[ -x "$PYTHON_BIN" ]] || {
+        err "Python do ambiente virtual não encontrado: $PYTHON_BIN"
         exit 1
     }
 }
 
-help() {
-cat <<'EOF'
-======================================================================
- WORKFLOW CANAL ANULAR — OpenFOAM v2312
-======================================================================
+source_foam(){ command -v blockMesh >/dev/null 2>&1 || { err "OpenFOAM não está carregado."; exit 1; }; }
 
-Uso:
-  ./Allrun <comando> [opções]
+help(){ cat <<'HELP_EOF'
+
+
+Uso: ./Allrun <comando> [opções]
 
 Comandos:
-  condicoes [Q]              Calcula BCs e grava no caso.
-  clean                      Limpa resultados, preservando 0.orig.
+  condicoes [Q]              Calcula BCs.
+  clean                      Limpa sem backup.
   mesh                       blockMesh + checkMesh.
-  init                       Restaura 0 e executa setFields.
-  run [solver] [tempo]      Executa simulação.
-  run5 [solver]              Atalho para 5 s físicos.
-  post                       Sampling + resultados + diagnóstico.
+  init                       Restaura 0 + setFields.
+  run [solver] [tempo]       Executa uma simulação e PRESERVA resultados.
+  run5 [solver]              Atalho para 5 s.
+  post                       Gera sampling/resultados/diagnóstico.
   compare                    Compara CFD x analítico.
-  full [Q] [solver] [tempo] Pipeline completo.
-  status                     Mostra estado do caso.
-  help                       Mostra esta ajuda.
+  archive                   post + compare + Allclean (backup + limpeza).
+  full [Q] [solver] [tempo]  Pipeline completo + archive automático no fim.
+  resume <solver> <endTime>  Retoma do maior tempo existente até endTime.
+  status                     Estado do caso.
+
+Solvers:
+  gamg       -> fvSolution.GAMG_OPT
+  petsc_cpu  -> fvSolution.PETSC_CPU_OPT
+  petsc_gpu  -> fvSolution.AMGX_PRESSURE_OPT
+  amgx_full  -> fvSolution.AMGX_FULL_EXPERIMENTAL
 
 Exemplos:
-  ./Allrun condicoes 35
-  ./Allrun full 35 petsc_cpu 5
-  ./Allrun run gamg
-  ./Allrun run petsc_cpu 5
-  ./Allrun run5 petsc_cpu
-  ./Allrun post
-  ./Allrun compare
-  ./Allrun status
+  ./Allrun full 35 petsc_gpu 20
+  ./Allrun run petsc_gpu 20
+  ./Allrun resume gamg 40
+  ./Allrun archive
+  NPROCS=1 ./Allrun run petsc_gpu 0.1
 
-Solvers aceitos:
-  gamg
-  petsc_cpu
-  petsc_gpu
-
-Observação:
-  Q padrão do pipeline = 35 L/min.
-  Tempo padrão de run sem argumento = endTime do controlDict.
-EOF
+'run' NÃO limpa resultados automaticamente. Para arquivar a simulação concluída use:
+  ./Allrun archive
+HELP_EOF
 }
-
-status() {
-    echo ""
-    echo "================ STATUS DO CASO ================"
-    [[ -d constant/polyMesh ]] && echo "Malha:              OK" || echo "Malha:              AUSENTE"
-    [[ -d 0 ]] && echo "Condições 0/:        OK" || echo "Condições 0/:        AUSENTE"
-    [[ -d 0.orig ]] && echo "Backup 0.orig/:      OK" || echo "Backup 0.orig/:      AUSENTE"
-
-    local n
-    n=$(find . -maxdepth 1 -type d -regextype posix-extended \
-        -regex './[0-9]+(\.[0-9]+)?' | wc -l)
-    echo "Tempos escritos:     $n"
-
-    local latest
-    latest=$(find . -maxdepth 1 -type d -regextype posix-extended \
-        -regex './[0-9]+(\.[0-9]+)?' -printf '%f\n' 2>/dev/null |
-        sort -V | tail -1 || true)
-    echo "Último tempo:        ${latest:-N/A}"
-
-    [[ -d processor0 ]] && echo "Decomposto:          SIM" || echo "Decomposto:          NÃO"
-    [[ -f resultados_hL.csv ]] && echo "Resultados CSV:      OK" || echo "Resultados CSV:      AUSENTE"
-    [[ -f comparacao_analitico_cfd.png ]] && echo "Comparação:          OK" || echo "Comparação:          AUSENTE"
-    echo "================================================="
+status(){
+  echo "================ STATUS ================"
+  [[ -d constant/polyMesh ]] && echo "Malha: OK" || echo "Malha: AUSENTE"
+  [[ -d 0 ]] && echo "0/: OK" || echo "0/: AUSENTE"
+  [[ -d 0.orig ]] && echo "0.orig/: OK" || echo "0.orig/: AUSENTE"
+  echo "Último tempo: $(find . -maxdepth 1 -type d -regextype posix-extended -regex './[0-9]+(\.[0-9]+)?' -printf '%f\n' 2>/dev/null | sort -V | tail -1 || true)"
+  echo "Backups:"
+  find . -maxdepth 1 -type d -name 'backup_*' -printf '  %f\n' 2>/dev/null | sort | tail -10 || true
+  echo "========================================"
 }
-
-condicoes() {
-    need_python
-    local q="${1:-35}"
-    info "Calculando condições para Q=${q} L/min..."
-    "$PYTHON" "$CASE_DIR/modelo_anular.py" condicoes "$q" --case "$CASE_DIR"
-    ok "Condições geradas."
+condicoes(){ need_python; local q="${1:-35}"; "$PYTHON_BIN" "$CASE_DIR/modelo_anular.py" condicoes "$q" --case "$CASE_DIR"; }
+clean(){
+  rm -rf processor* dynamicCode postProcessing log.* *.foam 2>/dev/null || true
+  find . -maxdepth 1 -type d -regextype posix-extended -regex './[0-9]+(\.[0-9]+)?' -exec rm -rf {} + 2>/dev/null || true
+  rm -rf 0; [[ -d 0.orig ]] && cp -r 0.orig 0 || { err "0.orig não existe."; exit 1; }
+  ok "Limpeza simples concluída."
 }
-
-clean() {
-    info "Limpando resultados e reconstruindo 0 a partir de 0.orig..."
-
-    rm -rf processor* dynamicCode postProcessing \
-        log.* *.foam 2>/dev/null || true
-
-    find . -maxdepth 1 -type d -regextype posix-extended \
-        -regex './[0-9]+(\.[0-9]+)?' -exec rm -rf {} + 2>/dev/null || true
-
-    rm -rf 0 2>/dev/null || true
-
-    if [[ -d 0.orig ]]; then
-        cp -r 0.orig 0
-    else
-        err "0.orig não existe. Não é seguro executar clean."
-        exit 1
-    fi
-
-    ok "Limpeza concluída."
-}
-
-mesh() {
-    source_foam
-    info "Gerando malha..."
-    blockMesh > log.blockMesh 2>&1
-    checkMesh > log.checkMesh 2>&1
-    ok "Malha gerada e verificada."
-}
-
-init() {
-    source_foam
-    [[ -d 0 ]] || { [[ -d 0.orig ]] && cp -r 0.orig 0 || {
-        err "Nem 0/ nem 0.orig/ existem."; exit 1; }; }
-
-    [[ -f system/setFieldsDict ]] || {
-        err "system/setFieldsDict não encontrado. Execute ./Allrun condicoes Q."
-        exit 1
-    }
-
-    info "Aplicando setFields..."
-    setFields > log.setFields 2>&1
-    ok "setFields aplicado."
-}
-
-configure_solver() {
-    local solver="$1"
-    local nprocs="$2"
-
-    if [[ -f system/decomposeParDict ]]; then
-        foamDictionary system/decomposeParDict \
-            -entry numberOfSubdomains -set "$nprocs" >/dev/null 2>&1 || true
-    fi
-
-    case "$solver" in
-        gamg)
-            sed -i '/petscFoam/d' system/controlDict 2>/dev/null || true
-            ;;
-        petsc_cpu|petsc_gpu)
-            if ! grep -q "petscFoam" system/controlDict 2>/dev/null; then
-                cat >> system/controlDict <<'EOF'
+mesh(){ source_foam; blockMesh > log.blockMesh 2>&1; checkMesh > log.checkMesh 2>&1; ok "Malha gerada e verificada."; }
+init(){ source_foam; [[ -d 0 ]] || cp -r 0.orig 0; setFields > log.setFields 2>&1; ok "setFields aplicado."; }
+configure_solver(){
+  local solver="$1" nprocs="$2" fv_file
+  case "$solver" in
+    gamg) fv_file="fvSolution.GAMG_OPT";;
+    petsc_cpu) fv_file="fvSolution.PETSC_CPU_OPT";;
+    petsc_gpu) fv_file="fvSolution.AMGX_PRESSURE_OPT";;
+    amgx_full) fv_file="fvSolution.AMGX_FULL_EXPERIMENTAL";;
+    *) err "Solver inválido: $solver"; exit 1;;
+  esac
+  [[ -f "system/$fv_file" ]] || { err "Arquivo ausente: system/$fv_file"; exit 1; }
+  cp "system/$fv_file" system/fvSolution
+  foamDictionary system/decomposeParDict -entry numberOfSubdomains -set "$nprocs" >/dev/null
+  if [[ "$solver" == petsc_cpu || "$solver" == petsc_gpu || "$solver" == amgx_full ]]; then
+    if ! grep -q 'petscFoam' system/controlDict 2>/dev/null; then
+      cat >> system/controlDict <<'PETSC_EOF'
 
 libs
 (
     petscFoam
 );
-EOF
-            fi
-            ;;
-        *)
-            err "Solver inválido: $solver"
-            exit 1
-            ;;
-    esac
+PETSC_EOF
+    fi
+  else
+    # Remove somente o bloco simples que o Allrun adicionou.
+    sed -i '/^libs[[:space:]]*$/,/^[[:space:]]*);[[:space:]]*$/d' system/controlDict 2>/dev/null || true
+  fi
+  info "Ativo: $fv_file | MPI ranks: $nprocs"
+}
+run(){
+  source_foam
+  local solver="${1:-gamg}" target="${2:-}" nprocs="${NPROCS:-6}"
+  [[ -f system/controlDict ]] || { err "system/controlDict ausente."; exit 1; }
+  [[ -d constant/polyMesh ]] || mesh
+  [[ -d 0 ]] || cp -r 0.orig 0
+  if [[ -n "$target" ]]; then
+    foamDictionary system/controlDict -entry endTime -set "$target" >/dev/null
+    foamDictionary system/controlDict -entry writeInterval -set "${WRITE_INTERVAL:-0.5}" >/dev/null
+  fi
+  configure_solver "$solver" "$nprocs"
+  local existing_np; existing_np="$(foamDictionary system/decomposeParDict -entry numberOfSubdomains 2>/dev/null | tail -1 | tr -cd '0-9' || echo 0)"
+  if [[ ! -d processor0 || "$existing_np" != "$nprocs" ]]; then
+    rm -rf processor*
+    decomposePar -force > log.decomposePar 2>&1
+  fi
+  rm -f STOP_IT
+  local -a MPI_CMD=(mpirun)
+  [[ "${OVERSUBSCRIBE:-no}" == yes ]] && MPI_CMD+=(--oversubscribe)
+  MPI_CMD+=(-np "$nprocs" interIsoFoam -parallel)
+  "${MPI_CMD[@]}" > log.interIsoFoam 2>&1 &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "${CHECK_INTERVAL:-30}"
+    if [[ -f STOP_IT ]]; then
+      warn "STOP_IT detectado. Interrompendo; resultados serão preservados."
+      kill -TERM "$pid" 2>/dev/null || true; sleep 2; kill -KILL "$pid" 2>/dev/null || true; rm -f STOP_IT; break
+    fi
+    local current exec
+    current=$(grep '^Time = ' log.interIsoFoam 2>/dev/null | tail -1 | awk '{print $3}' || true)
+    exec=$(grep 'ExecutionTime = ' log.interIsoFoam 2>/dev/null | tail -1 | awk '{print $3}' || true)
+    [[ -n "$current" ]] && info "t=${current}s | CPU=${exec:-N/A}s"
+  done
+  if ! wait "$pid"; then err "interIsoFoam terminou com erro. Nada será arquivado/limpo automaticamente."; exit 1; fi
+  reconstructPar > log.reconstructPar 2>&1 || warn "reconstructPar retornou erro."
+  touch case.foam
+  ok "Simulação concluída e resultados preservados."
 }
 
-run() {
-    source_foam
+resume(){
+  source_foam
+  local solver="${1:-gamg}" target="${2:-}" nprocs="${NPROCS:-6}"
+  [[ -f system/controlDict ]] || { err "system/controlDict ausente."; exit 1; }
+  [[ -d constant/polyMesh ]] || { err "constant/polyMesh ausente; resume não gera malha."; exit 1; }
+  [[ -d 0 ]] || { err "Diretório 0 ausente; resume não inicializa o caso."; exit 1; }
+  [[ -n "$target" ]] || { err "Uso: ./Allrun resume <solver> <endTime>"; exit 1; }
 
-    local solver="${1:-gamg}"
-    local target="${2:-}"
-    local nprocs="${NPROCS:-8}"
+  # Encontra numericamente o maior diretório de tempo real.
+  # 0/ e 0.orig/ são explicitamente excluídos.
+  local latest_time
+  latest_time="$(
+    python3 - <<'PY'
+from pathlib import Path
+from decimal import Decimal, InvalidOperation
 
-    [[ -f system/controlDict ]] || { err "system/controlDict não encontrado."; exit 1; }
-    [[ -d constant/polyMesh ]] || mesh
-    [[ -d 0 ]] || { [[ -d 0.orig ]] && cp -r 0.orig 0 || {
-        err "0.orig não existe."; exit 1; }; }
+times = []
+for p in Path(".").iterdir():
+    if not p.is_dir() or p.name in {"0", "0.orig"} or p.name.startswith("processor"):
+        continue
+    try:
+        value = Decimal(p.name)
+    except InvalidOperation:
+        continue
+    if value > 0:
+        times.append((value, p.name))
 
-    if [[ -n "$target" ]]; then
-        foamDictionary system/controlDict -entry endTime -set "$target"
-        foamDictionary system/controlDict -entry writeInterval -set "${WRITE_INTERVAL:-0.5}"
+if times:
+    print(max(times)[1])
+PY
+  )"
+
+  [[ -n "$latest_time" ]] || {
+    err "Nenhum diretório de tempo de simulação (>0) encontrado."
+    err "resume não modifica o caso."
+    exit 1
+  }
+
+  # Guarda o estado do controlDict para permitir diagnóstico/reversão manual.
+  local timestamp run_log decomp_log original_startFrom original_startTime original_endTime
+  timestamp="$(date '+%Y%m%d_%H%M%S')"
+  run_log="log.interIsoFoam.resume_${timestamp}"
+  decomp_log="log.decomposePar.resume_${timestamp}"
+
+  original_startFrom="$(foamDictionary system/controlDict -entry startFrom 2>/dev/null | tail -1 || true)"
+  original_startTime="$(foamDictionary system/controlDict -entry startTime 2>/dev/null | tail -1 || true)"
+  original_endTime="$(foamDictionary system/controlDict -entry endTime 2>/dev/null | tail -1 || true)"
+
+  info "Retomada solicitada."
+  info "Último tempo existente: $latest_time"
+  info "Novo endTime: $target"
+  info "Solver: $solver | MPI ranks: $nprocs"
+  info "Malha existente: constant/polyMesh"
+  info "Logs: $decomp_log / $run_log"
+
+  # startFrom/latestTime é controle de execução, não alteração física.
+  # A lógica de seleção do maior tempo pertence exclusivamente a este
+  # orquestrador; nenhum diretório histórico é removido.
+  foamDictionary system/controlDict -entry startFrom -set latestTime >/dev/null
+  foamDictionary system/controlDict -entry endTime -set "$target" >/dev/null
+  foamDictionary system/controlDict -entry writeInterval -set "${WRITE_INTERVAL:-0.5}" >/dev/null
+
+  configure_solver "$solver" "$nprocs"
+
+  local existing_np
+  existing_np="$(foamDictionary system/decomposeParDict -entry numberOfSubdomains 2>/dev/null | tail -1 | tr -cd '0-9' || echo 0)"
+
+  # Não há processor* no estado atual. Se houver uma decomposição antiga,
+  # somente a removemos se o número de ranks for incompatível.
+  if [[ ! -d processor0 || "$existing_np" != "$nprocs" ]]; then
+    if compgen -G 'processor*' >/dev/null; then
+      warn "Decomposição MPI existente incompatível; preservando resultados
+temporais e removendo somente processor* para recriação."
+      rm -rf processor*
     fi
+    decomposePar -force -latestTime > "$decomp_log" 2>&1 || {
+      err "decomposePar falhou. Resultados reconstruídos permanecem preservados."
+      exit 1
+    }
+  fi
 
-    configure_solver "$solver" "$nprocs"
+  rm -f STOP_IT
 
-    if [[ ! -d processor0 ]]; then
-        info "Decompondo domínio em ${nprocs} processos..."
-        decomposePar -force > log.decomposePar 2>&1
+  local -a MPI_CMD=(mpirun)
+  [[ "${OVERSUBSCRIBE:-no}" == yes ]] && MPI_CMD+=(--oversubscribe)
+  MPI_CMD+=(-np "$nprocs" interIsoFoam -parallel)
+
+  info "Executando interIsoFoam a partir de $latest_time até $target."
+  "${MPI_CMD[@]}" > "$run_log" 2>&1 &
+  local pid=$!
+
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "${CHECK_INTERVAL:-30}"
+    if [[ -f STOP_IT ]]; then
+      warn "STOP_IT detectado. Interrompendo; resultados serão preservados."
+      kill -TERM "$pid" 2>/dev/null || true
+      sleep 2
+      kill -KILL "$pid" 2>/dev/null || true
+      rm -f STOP_IT
+      break
     fi
+    local current exec
+    current=$(grep '^Time = ' "$run_log" 2>/dev/null | tail -1 | awk '{print $3}' || true)
+    exec=$(grep 'ExecutionTime = ' "$run_log" 2>/dev/null | tail -1 | awk '{print $3}' || true)
+    [[ -n "$current" ]] && info "resume: t=${current}s | CPU=${exec:-N/A}s"
+  done
 
-    rm -f STOP_IT
-    info "Executando interIsoFoam: solver=${solver}, processos=${nprocs}"
-    info "Para interromper: touch STOP_IT"
+  if ! wait "$pid"; then
+    err "interIsoFoam terminou com erro."
+    err "Nada será arquivado/limpo automaticamente."
+    err "Log: $run_log"
+    exit 1
+  fi
 
-    mpirun --oversubscribe -np "$nprocs" interIsoFoam -parallel \
-        > log.interIsoFoam 2>&1 &
-    local pid=$!
+  reconstructPar > "log.reconstructPar.resume_${timestamp}" 2>&1 || {
+    warn "reconstructPar retornou erro. Resultados MPI permanecem preservados."
+  }
 
-    while kill -0 "$pid" 2>/dev/null; do
-        sleep "${CHECK_INTERVAL:-30}"
-
-        if [[ -f STOP_IT ]]; then
-            warn "STOP_IT detectado. Interrompendo..."
-            kill -TERM "$pid" 2>/dev/null || true
-            sleep 2
-            kill -KILL "$pid" 2>/dev/null || true
-            rm -f STOP_IT
-            break
-        fi
-
-        local current
-        current=$(grep '^Time = ' log.interIsoFoam 2>/dev/null | tail -1 | awk '{print $3}' || true)
-        [[ -n "$current" ]] && info "Progresso: t=${current}s"
-    done
-
-    if ! wait "$pid"; then
-        err "interIsoFoam terminou com erro."
-        exit 1
-    fi
-
-    info "Reconstruindo resultados..."
-    reconstructPar > log.reconstructPar 2>&1 || warn "reconstructPar retornou erro."
-
-    touch case.foam
-    ok "Simulação finalizada."
+  touch case.foam
+  ok "Resume concluído. Resultados existentes e novos resultados preservados."
+  info "Log do solver: $run_log"
+  info "Log de decomposição: $decomp_log"
 }
 
-post() {
-    source_foam
-    need_python
-
-    info "Executando amostragem e análise..."
-    "$PYTHON" "$CASE_DIR/analise.py" resultados
-    "$PYTHON" "$CASE_DIR/analise.py" diagnostico
-    ok "Pós-processamento concluído."
+post(){ source_foam; need_python; "$PYTHON_BIN" "$CASE_DIR/analise.py" resultados; "$PYTHON_BIN" "$CASE_DIR/analise.py" diagnostico; ok "Pós-processamento concluído."; }
+compare(){ need_python; "$PYTHON_BIN" "$CASE_DIR/analise.py" comparar; ok "Comparação concluída."; }
+has_time_dirs(){
+  # Considera somente tempos de simulação REAIS.
+  # Exclui explicitamente 0, pois 0/ é a condição inicial e
+  # não significa que exista uma simulação executada.
+  find . -maxdepth 1 -type d \
+    ! -name '.' \
+    ! -name './0' \
+    ! -name './0.orig' \
+    -regextype posix-extended \
+    -regex './([0-9]+[.][0-9]+|[1-9][0-9]*)' \
+    -print -quit 2>/dev/null | grep -q .
 }
 
-compare() {
-    need_python
-    "$PYTHON" "$CASE_DIR/analise.py" comparar
+has_history_files(){
+  [[ -d validation_runs ]] && return 0
+  compgen -G 'benchmark_results*.tsv' >/dev/null && return 0
+  compgen -G 'benchmark_temporal*.tsv' >/dev/null && return 0
+  compgen -G 'log.temporal*' >/dev/null && return 0
+  compgen -G 'log.decomposePar.temporal*' >/dev/null && return 0
+  compgen -G 'log.decomposePar.validation*' >/dev/null && return 0
+  compgen -G 'log.interIsoFoam.*' >/dev/null && return 0
+  compgen -G 'log.*benchmark*' >/dev/null && return 0
+  return 1
 }
 
-full() {
-    local q="${1:-35}"
-    local solver="${2:-gamg}"
-    local target="${3:-}"
+archive(){
+  [[ -x "$CASE_DIR/Allclean" ]] || chmod +x "$CASE_DIR/Allclean" 2>/dev/null || true
+  [[ -x "$CASE_DIR/Allclean" ]] || { err "Allclean não encontrado/executável."; exit 1; }
 
-    info "Pipeline completo: Q=${q} L/min | solver=${solver} | tempo=${target:-controlDict}"
-
-    condicoes "$q"
-    clean
-    mesh
-    init
-
-    if [[ -n "$target" ]]; then
-        run "$solver" "$target"
-    else
-        run "$solver"
-    fi
-
+  # Só executa pós-processamento/análise quando existe uma simulação para analisar.
+  if has_time_dirs; then
+    info "Diretórios de tempo encontrados: executando pós-processamento e comparação."
     post
     compare
-    ok "PIPELINE COMPLETO FINALIZADO."
+  else
+    info "Nenhum diretório de tempo atual. Pulando post/compare."
+    if has_history_files; then
+      info "Histórico de benchmark/validação detectado; será arquivado pelo Allclean."
+    else
+      info "Nenhum resultado atual nem histórico de benchmark detectado."
+    fi
+  fi
+
+  "$CASE_DIR/Allclean"
+  ok "Backup criado (quando havia dados) e caso limpo para próxima simulação."
 }
 
-COMMAND="${1:-help}"
-shift || true
+full(){
+  local q="${1:-35}" solver="${2:-gamg}" target="${3:-20}"
 
+  # Antes de alterar condições para a próxima campanha, arquiva a execução anterior.
+  # Se houver simulação, archive faz post+compare+backup.
+  # Se só houver benchmark/histórico, archive chama Allclean diretamente para preservá-lo.
+  if has_time_dirs || has_history_files; then
+    warn "Resultados/histórico anteriores encontrados; arquivando antes de alterar as condições."
+    archive
+  else
+    clean
+  fi
+
+  condicoes "$q"
+  mesh
+  init
+
+  if [[ -n "$target" ]]; then
+    run "$solver" "$target"
+  else
+    run "$solver"
+  fi
+
+  # Concluiu: gerar dados/gráficos e fazer backup automaticamente.
+  archive
+  ok "PIPELINE COMPLETO FINALIZADO E ARQUIVADO."
+}
+
+COMMAND="${1:-help}"; shift || true
 case "$COMMAND" in
-    condicoes) condicoes "$@" ;;
-    clean) clean ;;
-    mesh) mesh ;;
-    init) init ;;
-    run) run "$@" ;;
-    run5) run "${1:-gamg}" "5.0" ;;
-    post) post ;;
-    compare) compare ;;
-    full) full "$@" ;;
-    status) status ;;
-    help|-h|--help) help ;;
-    *) err "Comando desconhecido: $COMMAND"; help; exit 1 ;;
+  condicoes) condicoes "$@";; clean) clean;; mesh) mesh;; init) init;; run) run "$@";; run5) run "${1:-gamg}" "5.0";; post) post;; compare) compare;; archive) archive;; full) full "$@";; resume) resume "$@";; status) status;; help|-h|--help) help;; *) err "Comando desconhecido: $COMMAND"; help; exit 1;;
 esac

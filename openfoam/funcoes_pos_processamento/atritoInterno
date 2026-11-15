@@ -1,0 +1,9 @@
+type            surfaceFieldValue;
+libs            (fieldFunctionObjects);
+fields          (wallShearStress);
+operation       weightedAreaAverage;
+weightField     alpha.oil;
+regionType      patch;
+name            parede_interna;
+writeFields     false;
+log             true;

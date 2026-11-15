@@ -36,8 +36,8 @@ divSchemes
 {
     // ── Momento ──────────────────────────────────────────────────────────
     // linearUpwind com grad limitado: mais estável que o original
-    // O grad(U) agora usa cellLimited (definido acima)
-    div(rhoPhi,U)       Gauss linearUpwind grad(U);
+    // O grad(U) agora usa cellLimited (definido acima) linearUpwind grad(U)
+    div(rhoPhi,U)       Gauss limitedLinearV 1;
 
     // ── VoF / alpha (CPU - MULES) ─────────────────────────────────────
     // Mantidos exatamente como estavam — corretos para interIsoFoam
@@ -56,21 +56,8 @@ divSchemes
 
 laplacianSchemes
 {
-    // ── Estratégia baseada na qualidade da sua malha ───────────────────
-    //
-    // SE malha ortogonal/boa qualidade (nonOrtho < 70°):
-    //   → usar "Gauss linear uncorrected"  (mais rápido, menos chamadas GPU)
-    //
-    // SE malha com não-ortogonalidade moderada (70°–85°):
-    //   → usar "Gauss linear limited corrected 0.333"  (seu valor era 0.5)
-    //
-    // SE malha complexa/snappyHexMesh (nonOrtho > 85°):
-    //   → manter "Gauss linear limited corrected 0.5" + nNonOrthCorr 1 ou 2
-    //
-    // Para GPU: MENOS correções = MENOS chamadas ao AmgX = MAIS rápido
-    // Recomendação inicial (ajuste conforme checkMesh):
-
-    default         Gauss linear limited corrected 0.333;
+    // Malha ortogonal: usar 'uncorrected' economiza cálculo e acelera a execução
+    default         Gauss linear uncorrected;
 }
 
 interpolationSchemes
@@ -80,12 +67,8 @@ interpolationSchemes
 
 snGradSchemes
 {
-    // Deve ser CONSISTENTE com laplacianSchemes:
-    // uncorrected  → se laplacian for uncorrected
-    // limited 0.333 → se laplacian for limited corrected 0.333
-    // corrected    → se laplacian for corrected (mais pesado para GPU)
-
-    default         limited corrected 0.333;
+    // Consistente com laplacianSchemes uncorrected
+    default         uncorrected;
 }
 
 wallDist

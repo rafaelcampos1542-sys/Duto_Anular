@@ -15,7 +15,7 @@ FoamFile
 // ************************************************************************* //
 
 // Gerado automaticamente por modelo_anular.py
-// Q = 35.00 L/min | h_L = 53.904 mm | V = 0.2054 m/s
+// Q = 20.00 L/min | h_L = 19.345 mm | V = 0.2891 m/s
 
 defaultFieldValues
 (
@@ -26,10 +26,11 @@ regions
 (
     boxToCell
     {
-        box (-0.06 -1.501 -0.06) (0.06 1.501 -0.003596);
+        box (-0.06 -0.301 -0.06) (0.06 0.301 -0.038155);
         fieldValues
         (
             volScalarFieldValue alpha.oil 1
+            volVectorFieldValue U (0 0.2891 0)
         );
     }
 );

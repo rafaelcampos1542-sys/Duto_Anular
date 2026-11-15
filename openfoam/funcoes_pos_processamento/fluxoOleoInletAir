@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| OpenFOAM dictionary                                                       |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fluxoOleoInletAir;
+}
+
+functions
+{
+    QOleoInletAir
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        regionType      patch;
+        name            inlet_air;
+
+        operation       weightedSum;
+        fields          (phi);
+        weightField     alpha.oil;
+
+        writeFields     false;
+        log             true;
+    }
+}

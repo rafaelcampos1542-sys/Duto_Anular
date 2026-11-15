@@ -14,6 +14,6 @@ FoamFile
 }
 // ************************************************************************* //
 
-// Re = 12.84 -> modelo: laminar
+// Re = 21.43 -> modelo: laminar
 simulationType  laminar;
 

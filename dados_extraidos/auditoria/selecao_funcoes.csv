@@ -1,0 +1,25 @@
+funcao,situacao,coluna_gerada,unidade,descricao,operacao_esperada,campo_de_peso,patch,componente,fator_conversao,gerada_em,motivo_descarte
+QOleoInlet,usada,Q_in_L_min,L/min,Vazão de óleo que entra por inlet_oil,weightedSum(phi),alpha.oil,inlet_oil,,-60000.0,execução (controlDict),
+QOleoOutlet,usada,Q_out_L_min,L/min,Vazão de óleo que sai por outlet,weightedSum(phi),alpha.oil,outlet,,60000.0,execução (controlDict),
+QOleoInletAir,usada,Q_inlet_air_L_min,L/min,Vazão de óleo que sai por inlet_air,weightedSum(phi),alpha.oil,inlet_air,,60000.0,pós-processamento (postProcess -func),
+QOleoMeio,usada,Q_meio_L_min,L/min,Vazão de óleo no plano central (y = 0),weightedAreaIntegrate(U),alpha.oil,,y (axial),60000.0,pós-processamento (postProcess -func),
+QOleoProximo,usada,Q_proximo_L_min,L/min,"Vazão de óleo no plano y = -0,15 m",weightedAreaIntegrate(U),alpha.oil,,y (axial),60000.0,pós-processamento (postProcess -func),
+areaOleoInlet,usada,A_oleo_entrada_m2,m2,Área de óleo na entrada (constante),areaIntegrate(alpha.oil),,inlet_oil,,1.0,execução (controlDict),
+areaOleoMeio,usada,A_oleo_meio_m2,m2,Área de óleo no plano central,areaIntegrate(alpha.oil),,,,1.0,execução (controlDict),
+areaOleoSaida,usada,A_oleo_saida_m2,m2,"Área de óleo no plano de saída (y = 0,3 m)",areaIntegrate(alpha.oil),,,,1.0,execução (controlDict),
+areaOleoProximo,usada,A_oleo_proximo_m2,m2,"Área de óleo no plano y = -0,15 m",areaIntegrate(alpha.oil),,,,1.0,pós-processamento (postProcess -func),
+velocidadePonderada,usada,V_meio_m_s,m/s,Velocidade axial média do óleo no plano central (ponderada por alpha.oil),weightedAreaAverage(U),alpha.oil,,y (axial),1.0,pós-processamento (postProcess -func),
+volumeOleo,usada,volume_oleo_m3,m3,Volume total de óleo no domínio,volIntegrate(alpha.oil),,,,1.0,execução (controlDict),
+areaOleoExterna,usada,A_molhada_externa_fo_m2,m2,Área molhada da parede externa,areaIntegrate(alpha.oil),,parede_externa,,1.0,pós-processamento (postProcess -func),
+areaOleoInterna,usada,A_molhada_interna_fo_m2,m2,Área molhada da parede interna,areaIntegrate(alpha.oil),,parede_interna,,1.0,pós-processamento (postProcess -func),
+atritoExterno,usada,tau_fo_externa_Pa,Pa,"Tensão média na parede externa, ponderada por alpha.oil (módulo do vetor médio)",weightedAreaAverage(wallShearStress),alpha.oil,parede_externa,,900.0,pós-processamento (postProcess -func),
+atritoInterno,usada,tau_fo_interna_Pa,Pa,"Tensão média na parede interna, ponderada por alpha.oil (módulo do vetor médio)",weightedAreaAverage(wallShearStress),alpha.oil,parede_interna,,900.0,pós-processamento (postProcess -func),
+atritoPonderado,descartada,,,Tensão média ponderada na parede externa,,,,,,pós-processamento (postProcess -func),Duplicata exata de atritoExterno (mesmo patch e mesma operação).
+atritoParedeExterna,descartada,,,Tensão média na parede externa sem ponderação,,,,,,execução (controlDict),areaAverage sem peso: mistura parede molhada e parede seca; o valor muda de sinal ao longo do tempo. Use atritoExterno.
+velocidadeMediaMeio,descartada,,,Velocidade média no plano central sem ponderação,,,,,,execução (controlDict),"areaAverage(U) sem peso: dominada pelo ar em contracorrente (cerca de -5,9 m/s em M1_Q10). Use velocidadePonderada."
+wallShear,descartada,,,Mínimo e máximo de wallShearStress por patch,,,,,,execução (controlDict),"Guarda só mínimo e máximo, não média nem integral. O campo wallShearStress gravado em cada tempo é usado no cálculo de atrito."
+alphaStats,descartada,,,Média volumétrica de alpha.oil,,,,,,pós-processamento (postProcess -func),Redundante com volumeOleo (volume = média x volume do domínio).
+TauParedeInterna,descartada,,,Nome antigo citado em analise.py,,,,,,execução (controlDict),Função que não existe no controlDict final; substituída pelo cálculo de atrito a partir dos campos.
+TauParedeExterna,descartada,,,Nome antigo citado em analise.py,,,,,,execução (controlDict),Função que não existe no controlDict final; substituída pelo cálculo de atrito a partir dos campos.
+sampling,perfil,perfis_resumo.csv,,Perfis de alpha.oil e U em linhas de amostragem (diagnóstico; não representam médias de seção).,,,,,,,
+perfil_lateral,perfil,perfis_resumo.csv,,Perfis de alpha.oil e U em linhas de amostragem (diagnóstico; não representam médias de seção).,,,,,,,

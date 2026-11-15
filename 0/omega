@@ -17,23 +17,24 @@ internalField   uniform 1.8;
 
 boundaryField
 {
-    inlet
-    {
-        type            fixedValue;
-        value           uniform 1.8;
-    }
     outlet
     {
         type            zeroGradient;
     }
     parede_interna
     {
-        type            omegaWallFunction;
-        value           uniform 1.8;
+        type            zeroGradient;
     }
     parede_externa
     {
-        type            omegaWallFunction;
-        value           uniform 1.8;
+        type            zeroGradient;
+    }
+    inlet_oil
+    {
+        type            zeroGradient;
+    }
+    inlet_air
+    {
+        type            zeroGradient;
     }
 }
